@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vannkraftverk Visualizer - NVE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header .stats {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(102, 126, 234, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .loading-progress {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .search-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .input-group input, .input-group select {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .reset-btn {
+            padding: 10px 20px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .reset-btn:hover {
+            background: #ee5a52;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+        }
+
+        .results-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            max-height: calc(100vh - 350px);
+            overflow-y: auto;
+        }
+
+        .result-item {
+            padding: 15px;
+            border: 2px solid #f0f0f0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .result-item:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .result-item.selected {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .result-item h3 {
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+
+        .result-item .meta {
+            color: #666;
+            font-size: 0.9rem;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .result-item .meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .detail-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            max-height: calc(100vh - 350px);
+            overflow-y: auto;
+        }
+
+        .detail-panel.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-style: italic;
+        }
+
+        .detail-header {
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .detail-header h2 {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .detail-header .subtitle {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .detail-item {
+            padding: 12px;
+            background: #f8f9ff;
+            border-radius: 6px;
+        }
+
+        .detail-item .label {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .detail-item .value {
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .detail-item.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .maps-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-top: 10px;
+        }
+
+        .maps-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .no-results {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+            font-style: italic;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: #667eea;
+            color: white;
+        }
+
+        .power-large {
+            background: #4caf50;
+        }
+
+        .power-medium {
+            background: #ff9800;
+        }
+
+        .power-small {
+            background: #2196f3;
+        }
+
+        .error-message {
+            background: #ff6b6b;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        /* Scrollbar styling */
+        .results-panel::-webkit-scrollbar,
+        .detail-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .results-panel::-webkit-scrollbar-track,
+        .detail-panel::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .results-panel::-webkit-scrollbar-thumb,
+        .detail-panel::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        @media (max-width: 1024px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-panel {
+                max-height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Laster vannkraftverk fra NVE</div>
+        <div class="loading-progress" id="loadingProgress">Starter...</div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>Vannkraftverk i Norge</h1>
+            <div class="stats" id="stats">Laster data...</div>
+        </div>
+
+        <div class="search-panel">
+            <div class="search-grid">
+                <div class="input-group">
+                    <label for="searchName">Søk etter navn</label>
+                    <input type="text" id="searchName" placeholder="F.eks. Tonstad, Flørli...">
+                </div>
+                <div class="input-group">
+                    <label for="searchFylke">Fylke</label>
+                    <select id="searchFylke">
+                        <option value="">Alle fylker</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="searchKommune">Kommune</label>
+                    <select id="searchKommune">
+                        <option value="">Alle kommuner</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-row">
+                <div class="input-group">
+                    <label for="minPower">Min ytelse (MW)</label>
+                    <input type="number" id="minPower" placeholder="0">
+                </div>
+                <div class="input-group">
+                    <label for="maxPower">Maks ytelse (MW)</label>
+                    <input type="number" id="maxPower" placeholder="1000">
+                </div>
+                <div class="input-group">
+                    <label for="minYear">Fra år</label>
+                    <input type="number" id="minYear" placeholder="1900">
+                </div>
+                <div class="input-group">
+                    <label for="maxYear">Til år</label>
+                    <input type="number" id="maxYear" placeholder="2025">
+                </div>
+                <button class="reset-btn" onclick="resetFilters()">Nullstill</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="results-panel" id="results">
+                <div class="no-results">Laster...</div>
+            </div>
+
+            <div class="detail-panel empty" id="details">
+                <p>Velg et vannkraftverk fra listen for å se detaljer</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // NVE API Configuration
+        const NVE_SERVICE = "https://nve.geodataonline.no/arcgis/rest/services/Vannkraft1/MapServer";
+        const NVE_LAYER = 0;
+        const NVE_URL = `${NVE_SERVICE}/${NVE_LAYER}/query`;
+
+        const KEEP_FIELDS = [
+            "vannkraftverkNr", "vannkraftverkNavn",
+            "kommunenummer", "kommuneNavn", "fylke",
+            "konsesjonStatus", "status",
+            "idriftsattAar",
+            "maksYtelse_MW",
+            "midlereProduksjon_GWh",
+            "bruttoFallhoyde_m",
+        ];
+
+        let allData = [];
+        let filteredData = [];
+        let selectedPlant = null;
+
+        // Load data from NVE API
+        async function loadDataFromNVE() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingProgress = document.getElementById('loadingProgress');
+
+            try {
+                const allRows = [];
+                let offset = 0;
+                const recordsPerPage = 1000;
+
+                while (true) {
+                    loadingProgress.textContent = `Laster... ${allRows.length} kraftverk hentet`;
+
+                    const params = new URLSearchParams({
+                        where: "1=1",
+                        outFields: "*",
+                        returnGeometry: "true",
+                        outSR: "4326",
+                        f: "json",
+                        resultRecordCount: recordsPerPage.toString(),
+                        resultOffset: offset.toString()
+                    });
+
+                    const response = await fetch(`${NVE_URL}?${params}`);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.error) {
+                        throw new Error(JSON.stringify(data.error));
+                    }
+
+                    const features = data.features || [];
+
+                    for (const feature of features) {
+                        const attrs = feature.attributes;
+                        const row = {};
+
+                        // Copy wanted fields
+                        for (const field of KEEP_FIELDS) {
+                            row[field] = attrs[field] !== undefined ? attrs[field] : null;
+                        }
+
+                        row.domene = "Vannkraft";
+                        row.lat = feature.geometry.y;
+                        row.lon = feature.geometry.x;
+
+                        allRows.push(row);
+                    }
+
+                    console.log(`Offset ${offset}: +${features.length} → ${allRows.length} kraftverk`);
+
+                    // Break if we got fewer records than requested (last page)
+                    if (features.length < recordsPerPage) {
+                        break;
+                    }
+
+                    offset += recordsPerPage;
+                }
+
+                allData = allRows;
+                loadingProgress.textContent = `Ferdig! Lastet ${allData.length} vannkraftverk`;
+
+                // Hide loading overlay after a short delay
+                setTimeout(() => {
+                    loadingOverlay.classList.add('hidden');
+                }, 500);
+
+                // Initialize the app
+                populateFilters();
+                filterData();
+                updateStats();
+
+            } catch (error) {
+                console.error('Error loading data from NVE:', error);
+                loadingOverlay.innerHTML = `
+                    <div class="error-message">
+                        <h2>Kunne ikke laste data fra NVE</h2>
+                        <p>${error.message}</p>
+                        <button onclick="location.reload()" style="margin-top: 15px; padding: 10px 20px; background: white; color: #ff6b6b; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            Prøv igjen
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function populateFilters() {
+            // Get unique fylker and kommuner
+            const fylker = [...new Set(allData.map(d => d.fylke))].filter(f => f).sort();
+            const kommuner = [...new Set(allData.map(d => d.kommuneNavn))].filter(k => k).sort();
+
+            const fylkeSelect = document.getElementById('searchFylke');
+            fylker.forEach(fylke => {
+                const option = document.createElement('option');
+                option.value = fylke;
+                option.textContent = fylke;
+                fylkeSelect.appendChild(option);
+            });
+
+            const kommuneSelect = document.getElementById('searchKommune');
+            kommuner.forEach(kommune => {
+                const option = document.createElement('option');
+                option.value = kommune;
+                option.textContent = kommune;
+                kommuneSelect.appendChild(option);
+            });
+        }
+
+        function updateStats() {
+            const totalPlants = allData.length;
+            const totalPower = allData.reduce((sum, p) => sum + (p.maksYtelse_MW || 0), 0);
+            document.getElementById('stats').innerHTML =
+                `${totalPlants} vannkraftverk | Total ytelse: ${totalPower.toFixed(0)} MW | Filtrert: ${filteredData.length}`;
+        }
+
+        function filterData() {
+            const nameSearch = document.getElementById('searchName').value.toLowerCase();
+            const fylkeSearch = document.getElementById('searchFylke').value;
+            const kommuneSearch = document.getElementById('searchKommune').value;
+            const minPower = parseFloat(document.getElementById('minPower').value) || 0;
+            const maxPower = parseFloat(document.getElementById('maxPower').value) || Infinity;
+            const minYear = parseInt(document.getElementById('minYear').value) || 0;
+            const maxYear = parseInt(document.getElementById('maxYear').value) || Infinity;
+
+            filteredData = allData.filter(plant => {
+                const nameMatch = !nameSearch || (plant.vannkraftverkNavn && plant.vannkraftverkNavn.toLowerCase().includes(nameSearch));
+                const fylkeMatch = !fylkeSearch || plant.fylke === fylkeSearch;
+                const kommuneMatch = !kommuneSearch || plant.kommuneNavn === kommuneSearch;
+                const powerMatch = (plant.maksYtelse_MW || 0) >= minPower && (plant.maksYtelse_MW || 0) <= maxPower;
+                const yearMatch = (plant.idriftsattAar || 0) >= minYear && (plant.idriftsattAar || 0) <= maxYear;
+
+                return nameMatch && fylkeMatch && kommuneMatch && powerMatch && yearMatch;
+            });
+
+            displayResults();
+            updateStats();
+        }
+
+        function displayResults() {
+            const resultsDiv = document.getElementById('results');
+
+            if (filteredData.length === 0) {
+                resultsDiv.innerHTML = '<div class="no-results">Ingen vannkraftverk funnet med disse kriteriene.</div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = filteredData.map(plant => {
+                const powerClass = (plant.maksYtelse_MW || 0) > 100 ? 'power-large' :
+                                   (plant.maksYtelse_MW || 0) > 20 ? 'power-medium' : 'power-small';
+
+                return `
+                    <div class="result-item ${selectedPlant && selectedPlant.vannkraftverkNr === plant.vannkraftverkNr ? 'selected' : ''}"
+                         onclick="showDetails(${plant.vannkraftverkNr})">
+                        <h3>${plant.vannkraftverkNavn || 'Ukjent'}</h3>
+                        <div class="meta">
+                            <span><span class="badge ${powerClass}">${plant.maksYtelse_MW || 0} MW</span></span>
+                            <span>📍 ${plant.kommuneNavn || 'N/A'}, ${plant.fylke || 'N/A'}</span>
+                            <span>📅 ${plant.idriftsattAar || 'N/A'}</span>
+                            <span>⬇️ ${plant.bruttoFallhoyde_m || 0} m</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showDetails(plantNr) {
+            selectedPlant = allData.find(p => p.vannkraftverkNr === plantNr);
+            if (!selectedPlant) return;
+
+            displayResults(); // Re-render to update selection
+
+            const detailsDiv = document.getElementById('details');
+            detailsDiv.className = 'detail-panel';
+
+            const statusText = {
+                'D': 'I drift'
+            }[selectedPlant.status] || selectedPlant.status || 'Ukjent';
+
+            const konsesjonText = selectedPlant.konsesjonStatus !== null ?
+                `Status ${selectedPlant.konsesjonStatus}` : 'Ikke oppgitt';
+
+            detailsDiv.innerHTML = `
+                <div class="detail-header">
+                    <h2>${selectedPlant.vannkraftverkNavn || 'Ukjent'}</h2>
+                    <div class="subtitle">Anleggsnummer: ${selectedPlant.vannkraftverkNr}</div>
+                </div>
+
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="label">Maksimal ytelse</div>
+                        <div class="value">${selectedPlant.maksYtelse_MW || 'N/A'} MW</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Idriftsatt år</div>
+                        <div class="value">${selectedPlant.idriftsattAar || 'Ikke oppgitt'}</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Brutto fallhøyde</div>
+                        <div class="value">${selectedPlant.bruttoFallhoyde_m || 'N/A'} meter</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Status</div>
+                        <div class="value">${statusText}</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Kommune</div>
+                        <div class="value">${selectedPlant.kommuneNavn || 'N/A'} (${selectedPlant.kommunenummer || 'N/A'})</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Fylke</div>
+                        <div class="value">${selectedPlant.fylke || 'N/A'}</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Konsesjonsstatus</div>
+                        <div class="value">${konsesjonText}</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Domene</div>
+                        <div class="value">${selectedPlant.domene || 'N/A'}</div>
+                    </div>
+
+                    ${selectedPlant.midlereProduksjon_GWh ? `
+                    <div class="detail-item full-width">
+                        <div class="label">Midlere produksjon</div>
+                        <div class="value">${selectedPlant.midlereProduksjon_GWh} GWh</div>
+                    </div>
+                    ` : ''}
+
+                    <div class="detail-item full-width">
+                        <div class="label">Koordinater</div>
+                        <div class="value">Lat: ${selectedPlant.lat.toFixed(6)}, Lon: ${selectedPlant.lon.toFixed(6)}</div>
+                    </div>
+                </div>
+
+                <button class="maps-btn" onclick="openInMaps(${selectedPlant.lat}, ${selectedPlant.lon}, '${(selectedPlant.vannkraftverkNavn || 'Kraftverk').replace(/'/g, "\\'")}')">\u200b
+                    🗺️ Åpne i Google Maps
+                </button>
+            `;
+        }
+
+        function openInMaps(lat, lon, name) {
+            const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}&query_place_id=${encodeURIComponent(name)}`;
+            window.open(url, '_blank');
+        }
+
+        function resetFilters() {
+            document.getElementById('searchName').value = '';
+            document.getElementById('searchFylke').value = '';
+            document.getElementById('searchKommune').value = '';
+            document.getElementById('minPower').value = '';
+            document.getElementById('maxPower').value = '';
+            document.getElementById('minYear').value = '';
+            document.getElementById('maxYear').value = '';
+            filterData();
+        }
+
+        // Add event listeners
+        document.getElementById('searchName').addEventListener('input', filterData);
+        document.getElementById('searchFylke').addEventListener('change', filterData);
+        document.getElementById('searchKommune').addEventListener('change', filterData);
+        document.getElementById('minPower').addEventListener('input', filterData);
+        document.getElementById('maxPower').addEventListener('input', filterData);
+        document.getElementById('minYear').addEventListener('input', filterData);
+        document.getElementById('maxYear').addEventListener('input', filterData);
+
+        // Load data when page loads
+        loadDataFromNVE();
+    </script>
+</body>
+</html>
