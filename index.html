@@ -284,6 +284,25 @@
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
         }
 
+        .utbygd-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-top: 10px;
+        }
+
+        .utbygd-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(245, 124, 0, 0.4);
+        }
+
         .no-results {
             text-align: center;
             color: #999;
@@ -369,6 +388,17 @@
                 <div class="input-group">
                     <label for="searchName">Søk etter navn</label>
                     <input type="text" id="searchName" placeholder="F.eks. Tonstad, Flørli...">
+                </div>
+                <div class="input-group">
+                    <label for="searchKategori">Størrelse</label>
+                    <select id="searchKategori">
+                        <option value="">Alle størrelser</option>
+                        <option value="pumpe">Pumpekraftverk (negativ ytelse)</option>
+                        <option value="mikro">Mikrokraftverk (< 0,1 MW)</option>
+                        <option value="mini">Minikraftverk (0,1 - 1 MW)</option>
+                        <option value="små">Småkraftverk (1 - 10 MW)</option>
+                        <option value="stor">Storkraftverk (≥ 10 MW)</option>
+                    </select>
                 </div>
                 <div class="input-group">
                     <label for="searchFylke">Fylke</label>
@@ -509,7 +539,6 @@
                 // Initialize the app
                 populateFilters();
                 filterData();
-                updateStats();
 
             } catch (error) {
                 console.error('Error loading data from NVE:', error);
@@ -547,30 +576,74 @@
             });
         }
 
+        function formatPower(powerMW) {
+            if (powerMW >= 1000) {
+                return `${(powerMW / 1000).toFixed(2)} GW`;
+            }
+            return `${powerMW.toFixed(0)} MW`;
+        }
+
         function updateStats() {
             const totalPlants = allData.length;
-            const totalPower = allData.reduce((sum, p) => sum + (p.maksYtelse_MW || 0), 0);
+            const totalPower = allData.reduce((sum, p) => sum + (Number(p.maksYtelse_MW) || 0), 0);
+            const filteredPower = filteredData.reduce((sum, p) => sum + (Number(p.maksYtelse_MW) || 0), 0);
             document.getElementById('stats').innerHTML =
-                `${totalPlants} vannkraftverk | Total ytelse: ${totalPower.toFixed(0)} MW | Filtrert: ${filteredData.length}`;
+                `${totalPlants} vannkraftverk | Total ytelse: ${formatPower(totalPower)} | Filtrert: ${filteredData.length} (${formatPower(filteredPower)})`;
+        }
+
+        function getCategory(power) {
+            if (power < 0) return 'pumpe';
+            if (power < 0.1) return 'mikro';
+            if (power < 1) return 'mini';
+            if (power < 10) return 'små';
+            return 'stor';
+        }
+
+        function getCategoryLabel(power) {
+            if (power < 0) return 'Pumpekraftverk';
+            if (power < 0.1) return 'Mikrokraftverk';
+            if (power < 1) return 'Minikraftverk';
+            if (power < 10) return 'Småkraftverk';
+            return 'Storkraftverk';
         }
 
         function filterData() {
-            const nameSearch = document.getElementById('searchName').value.toLowerCase();
+            const nameSearch = document.getElementById('searchName').value.toLowerCase().trim();
+            const kategoriSearch = document.getElementById('searchKategori').value;
             const fylkeSearch = document.getElementById('searchFylke').value;
             const kommuneSearch = document.getElementById('searchKommune').value;
-            const minPower = parseFloat(document.getElementById('minPower').value) || 0;
-            const maxPower = parseFloat(document.getElementById('maxPower').value) || Infinity;
-            const minYear = parseInt(document.getElementById('minYear').value) || 0;
-            const maxYear = parseInt(document.getElementById('maxYear').value) || Infinity;
+            const minPowerInput = document.getElementById('minPower').value.trim();
+            const maxPowerInput = document.getElementById('maxPower').value.trim();
+            const minYearInput = document.getElementById('minYear').value.trim();
+            const maxYearInput = document.getElementById('maxYear').value.trim();
+
+            const minPower = minPowerInput ? parseFloat(minPowerInput) : -Infinity;
+            const maxPower = maxPowerInput ? parseFloat(maxPowerInput) : Infinity;
+            const minYear = minYearInput ? parseInt(minYearInput) : -Infinity;
+            const maxYear = maxYearInput ? parseInt(maxYearInput) : Infinity;
 
             filteredData = allData.filter(plant => {
+                // Name match
                 const nameMatch = !nameSearch || (plant.vannkraftverkNavn && plant.vannkraftverkNavn.toLowerCase().includes(nameSearch));
-                const fylkeMatch = !fylkeSearch || plant.fylke === fylkeSearch;
-                const kommuneMatch = !kommuneSearch || plant.kommuneNavn === kommuneSearch;
-                const powerMatch = (plant.maksYtelse_MW || 0) >= minPower && (plant.maksYtelse_MW || 0) <= maxPower;
-                const yearMatch = (plant.idriftsattAar || 0) >= minYear && (plant.idriftsattAar || 0) <= maxYear;
 
-                return nameMatch && fylkeMatch && kommuneMatch && powerMatch && yearMatch;
+                // Category match
+                const kategoriMatch = !kategoriSearch || getCategory(plant.maksYtelse_MW || 0) === kategoriSearch;
+
+                // Fylke match
+                const fylkeMatch = !fylkeSearch || plant.fylke === fylkeSearch;
+
+                // Kommune match
+                const kommuneMatch = !kommuneSearch || plant.kommuneNavn === kommuneSearch;
+
+                // Power match - handle null values
+                const power = plant.maksYtelse_MW || 0;
+                const powerMatch = power >= minPower && power <= maxPower;
+
+                // Year match - handle null values
+                const year = plant.idriftsattAar || 0;
+                const yearMatch = year >= minYear && year <= maxYear;
+
+                return nameMatch && kategoriMatch && fylkeMatch && kommuneMatch && powerMatch && yearMatch;
             });
 
             displayResults();
@@ -588,13 +661,15 @@
             resultsDiv.innerHTML = filteredData.map(plant => {
                 const powerClass = (plant.maksYtelse_MW || 0) > 100 ? 'power-large' :
                                    (plant.maksYtelse_MW || 0) > 20 ? 'power-medium' : 'power-small';
+                const categoryLabel = getCategoryLabel(plant.maksYtelse_MW || 0);
 
                 return `
                     <div class="result-item ${selectedPlant && selectedPlant.vannkraftverkNr === plant.vannkraftverkNr ? 'selected' : ''}"
                          onclick="showDetails(${plant.vannkraftverkNr})">
-                        <h3>${plant.vannkraftverkNavn || 'Ukjent'}</h3>
+                        <h3>${plant.vannkraftverkNavn || 'Ukjent'} (ID: ${plant.vannkraftverkNr})</h3>
                         <div class="meta">
                             <span><span class="badge ${powerClass}">${plant.maksYtelse_MW || 0} MW</span></span>
+                            <span>🏭 ${categoryLabel}</span>
                             <span>📍 ${plant.kommuneNavn || 'N/A'}, ${plant.fylke || 'N/A'}</span>
                             <span>📅 ${plant.idriftsattAar || 'N/A'}</span>
                             <span>⬇️ ${plant.bruttoFallhoyde_m || 0} m</span>
@@ -620,13 +695,20 @@
             const konsesjonText = selectedPlant.konsesjonStatus !== null ?
                 `Status ${selectedPlant.konsesjonStatus}` : 'Ikke oppgitt';
 
+            const categoryLabel = getCategoryLabel(selectedPlant.maksYtelse_MW || 0);
+
             detailsDiv.innerHTML = `
                 <div class="detail-header">
                     <h2>${selectedPlant.vannkraftverkNavn || 'Ukjent'}</h2>
-                    <div class="subtitle">Anleggsnummer: ${selectedPlant.vannkraftverkNr}</div>
+                    <div class="subtitle">AnleggsID: ${selectedPlant.vannkraftverkNr}</div>
                 </div>
 
                 <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="label">Størrelse</div>
+                        <div class="value">${categoryLabel}</div>
+                    </div>
+
                     <div class="detail-item">
                         <div class="label">Maksimal ytelse</div>
                         <div class="value">${selectedPlant.maksYtelse_MW || 'N/A'} MW</div>
@@ -683,6 +765,10 @@
                 <button class="maps-btn" onclick="openInMaps(${selectedPlant.lat}, ${selectedPlant.lon}, '${(selectedPlant.vannkraftverkNavn || 'Kraftverk').replace(/'/g, "\\'")}')">\u200b
                     🗺️ Åpne i Google Maps
                 </button>
+
+                <button class="utbygd-btn" onclick="openInUtbygd(${selectedPlant.vannkraftverkNr})">\u200b
+                    🏭 Åpne i Utbygd
+                </button>
             `;
         }
 
@@ -691,8 +777,14 @@
             window.open(url, '_blank');
         }
 
+        function openInUtbygd(kraftverksID) {
+            const url = `http://utbygd/Vannkraft/Kraftverk/Details/${kraftverksID}`;
+            window.open(url, '_blank');
+        }
+
         function resetFilters() {
             document.getElementById('searchName').value = '';
+            document.getElementById('searchKategori').value = '';
             document.getElementById('searchFylke').value = '';
             document.getElementById('searchKommune').value = '';
             document.getElementById('minPower').value = '';
@@ -704,6 +796,7 @@
 
         // Add event listeners
         document.getElementById('searchName').addEventListener('input', filterData);
+        document.getElementById('searchKategori').addEventListener('change', filterData);
         document.getElementById('searchFylke').addEventListener('change', filterData);
         document.getElementById('searchKommune').addEventListener('change', filterData);
         document.getElementById('minPower').addEventListener('input', filterData);
