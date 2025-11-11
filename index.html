@@ -303,6 +303,25 @@
             box-shadow: 0 8px 20px rgba(245, 124, 0, 0.4);
         }
 
+        .konsesjon-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-top: 10px;
+        }
+
+        .konsesjon-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.4);
+        }
+
         .no-results {
             text-align: center;
             color: #999;
@@ -459,6 +478,17 @@
             "maksYtelse_MW",
             "midlereProduksjon_GWh",
             "bruttoFallhoyde_m",
+            "vassdragsNr",
+            "vannkraftverkType",
+            "kdbNr",
+            "SpID",
+            "vannkraftverkEier",
+            "elvenavnHierarki",
+            "nedstromVannkraftverkNr",
+            "nedstromVannkraftverkNr_Liste",
+            "kraftverkSymbol",
+            "energiEkvivalent_kWh_m3",
+            "medium",
         ];
 
         let allData = [];
@@ -740,6 +770,46 @@
                     </div>
 
                     <div class="detail-item">
+                        <div class="label">Vassdragsnummer</div>
+                        <div class="value">${selectedPlant.vassdragsNr || 'Ikke oppgitt'}</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Konsesjonsnummer</div>
+                        <div class="value">${selectedPlant.kdbNr || 'Ikke oppgitt'}</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">SP-vassdrag</div>
+                        <div class="value">${selectedPlant.SpID || 'Ikke oppgitt'}</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Kraftverktype</div>
+                        <div class="value">${selectedPlant.vannkraftverkType || 'Ikke oppgitt'}</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Eier</div>
+                        <div class="value">${selectedPlant.vannkraftverkEier || 'Ikke oppgitt'}</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Bygningstype</div>
+                        <div class="value">${selectedPlant.medium || 'Ikke oppgitt'}</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Energiekvivalent</div>
+                        <div class="value">${selectedPlant.energiEkvivalent_kWh_m3 ? selectedPlant.energiEkvivalent_kWh_m3.toFixed(2) + ' kWh/m³' : 'Ikke oppgitt'}</div>
+                    </div>
+
+                    <div class="detail-item">
+                        <div class="label">Symbolkode</div>
+                        <div class="value">${selectedPlant.kraftverkSymbol || 'Ikke oppgitt'}</div>
+                    </div>
+
+                    <div class="detail-item">
                         <div class="label">Konsesjonsstatus</div>
                         <div class="value">${konsesjonText}</div>
                     </div>
@@ -748,6 +818,27 @@
                         <div class="label">Domene</div>
                         <div class="value">${selectedPlant.domene || 'N/A'}</div>
                     </div>
+
+                    ${selectedPlant.nedstromVannkraftverkNr ? `
+                    <div class="detail-item">
+                        <div class="label">Nedstrøms kraftverk</div>
+                        <div class="value"><a href="#" onclick="showDetails(${selectedPlant.nedstromVannkraftverkNr}); return false;" style="color: #667eea; text-decoration: underline;">ID: ${selectedPlant.nedstromVannkraftverkNr}</a></div>
+                    </div>
+                    ` : ''}
+
+                    ${selectedPlant.elvenavnHierarki ? `
+                    <div class="detail-item full-width">
+                        <div class="label">Elvenavn (hierarki)</div>
+                        <div class="value">${selectedPlant.elvenavnHierarki}</div>
+                    </div>
+                    ` : ''}
+
+                    ${selectedPlant.nedstromVannkraftverkNr_Liste ? `
+                    <div class="detail-item full-width">
+                        <div class="label">Nedstrøms kraftverk (liste)</div>
+                        <div class="value">${selectedPlant.nedstromVannkraftverkNr_Liste}</div>
+                    </div>
+                    ` : ''}
 
                     ${selectedPlant.midlereProduksjon_GWh ? `
                     <div class="detail-item full-width">
@@ -769,6 +860,12 @@
                 <button class="utbygd-btn" onclick="openInUtbygd(${selectedPlant.vannkraftverkNr})">\u200b
                     🏭 Åpne i Utbygd
                 </button>
+
+                ${selectedPlant.kdbNr ? `
+                <button class="konsesjon-btn" onclick="openInKonsesjon(${selectedPlant.kdbNr})">\u200b
+                    📄 Åpne konsesjon
+                </button>
+                ` : ''}
             `;
         }
 
@@ -779,6 +876,11 @@
 
         function openInUtbygd(kraftverksID) {
             const url = `http://utbygd/Vannkraft/Kraftverk/Details/${kraftverksID}`;
+            window.open(url, '_blank');
+        }
+
+        function openInKonsesjon(kdbNr) {
+            const url = `http://konsesjoner/Vassdrag/Vassdrag/Details/${kdbNr}`;
             window.open(url, '_blank');
         }
 
