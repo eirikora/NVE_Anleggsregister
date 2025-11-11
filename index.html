@@ -19,25 +19,28 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
         .header {
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             color: white;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+            font-size: 2rem;
+            margin: 0;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
         }
 
         .header .stats {
-            font-size: 1.1rem;
+            font-size: 1rem;
             opacity: 0.9;
+            text-align: right;
         }
 
         .loading-overlay {
@@ -87,9 +90,9 @@
         .search-panel {
             background: white;
             border-radius: 12px;
-            padding: 25px;
+            padding: 20px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .search-grid {
@@ -148,7 +151,7 @@
 
         .content {
             display: grid;
-            grid-template-columns: 1fr 400px;
+            grid-template-columns: 500px 1fr;
             gap: 20px;
         }
 
@@ -157,7 +160,7 @@
             border-radius: 12px;
             padding: 20px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            max-height: calc(100vh - 350px);
+            max-height: calc(100vh - 300px);
             overflow-y: auto;
         }
 
@@ -206,7 +209,7 @@
             border-radius: 12px;
             padding: 25px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            max-height: calc(100vh - 350px);
+            max-height: calc(100vh - 300px);
             overflow-y: auto;
         }
 
@@ -220,30 +223,30 @@
 
         .detail-header {
             border-bottom: 3px solid #667eea;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
+            padding-bottom: 12px;
+            margin-bottom: 15px;
         }
 
         .detail-header h2 {
             color: #333;
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             margin-bottom: 5px;
         }
 
         .detail-header .subtitle {
             color: #666;
-            font-size: 1rem;
+            font-size: 0.9rem;
         }
 
         .detail-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
         }
 
         .detail-item {
-            padding: 12px;
+            padding: 10px;
             background: #f8f9ff;
             border-radius: 6px;
         }
@@ -251,14 +254,15 @@
         .detail-item .label {
             font-weight: 600;
             color: #667eea;
-            font-size: 0.85rem;
-            margin-bottom: 5px;
+            font-size: 0.75rem;
+            margin-bottom: 4px;
             text-transform: uppercase;
         }
 
         .detail-item .value {
             color: #333;
-            font-size: 1.1rem;
+            font-size: 0.95rem;
+            word-break: break-word;
         }
 
         .detail-item.full-width {
@@ -267,16 +271,15 @@
 
         .maps-btn {
             width: 100%;
-            padding: 15px;
+            padding: 12px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
+            border-radius: 6px;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.3s, box-shadow 0.3s;
-            margin-top: 10px;
         }
 
         .maps-btn:hover {
@@ -286,16 +289,15 @@
 
         .utbygd-btn {
             width: 100%;
-            padding: 15px;
+            padding: 12px;
             background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
+            border-radius: 6px;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.3s, box-shadow 0.3s;
-            margin-top: 10px;
         }
 
         .utbygd-btn:hover {
@@ -305,21 +307,27 @@
 
         .konsesjon-btn {
             width: 100%;
-            padding: 15px;
+            padding: 12px;
             background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
+            border-radius: 6px;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.3s, box-shadow 0.3s;
-            margin-top: 10px;
         }
 
         .konsesjon-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .button-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
         }
 
         .no-results {
@@ -378,13 +386,39 @@
             border-radius: 10px;
         }
 
+        @media (max-width: 1400px) {
+            .detail-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
         @media (max-width: 1024px) {
             .content {
                 grid-template-columns: 1fr;
             }
 
+            .detail-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
             .detail-panel {
                 max-height: 500px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .header .stats {
+                text-align: left;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -853,19 +887,21 @@
                     </div>
                 </div>
 
-                <button class="maps-btn" onclick="openInMaps(${selectedPlant.lat}, ${selectedPlant.lon}, '${(selectedPlant.vannkraftverkNavn || 'Kraftverk').replace(/'/g, "\\'")}')">\u200b
-                    🗺️ Åpne i Google Maps
-                </button>
+                <div class="button-container">
+                    <button class="maps-btn" onclick="openInMaps(${selectedPlant.lat}, ${selectedPlant.lon}, '${(selectedPlant.vannkraftverkNavn || 'Kraftverk').replace(/'/g, "\\'")}')">\u200b
+                        🗺️ Åpne i Google Maps
+                    </button>
 
-                <button class="utbygd-btn" onclick="openInUtbygd(${selectedPlant.vannkraftverkNr})">\u200b
-                    🏭 Åpne i Utbygd
-                </button>
+                    <button class="utbygd-btn" onclick="openInUtbygd(${selectedPlant.vannkraftverkNr})">\u200b
+                        🏭 Åpne i Utbygd
+                    </button>
 
-                ${selectedPlant.kdbNr ? `
-                <button class="konsesjon-btn" onclick="openInKonsesjon(${selectedPlant.kdbNr})">\u200b
-                    📄 Åpne konsesjon
-                </button>
-                ` : ''}
+                    ${selectedPlant.kdbNr ? `
+                    <button class="konsesjon-btn" onclick="openInKonsesjon(${selectedPlant.kdbNr})">\u200b
+                        📄 Åpne konsesjon
+                    </button>
+                    ` : ''}
+                </div>
             `;
         }
 
