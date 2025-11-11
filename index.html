@@ -764,6 +764,19 @@
             }).join('');
         }
 
+        function formatDownstreamList(listString) {
+            if (!listString) return '';
+
+            const ids = listString.split(',').map(id => id.trim()).filter(id => id);
+            const links = ids.map(id => {
+                const plant = allData.find(p => p.vannkraftverkNr == id);
+                const name = plant ? plant.vannkraftverkNavn : 'Ukjent';
+                return `<a href="#" onclick="showDetails(${id}); return false;" style="color: #667eea; text-decoration: underline;">${name}(${id})</a>`;
+            });
+
+            return links.join(' --> ');
+        }
+
         function showDetails(plantNr) {
             selectedPlant = allData.find(p => p.vannkraftverkNr === plantNr);
             if (!selectedPlant) return;
@@ -891,7 +904,7 @@
                     ${selectedPlant.nedstromVannkraftverkNr_Liste ? `
                     <div class="detail-item full-width">
                         <div class="label">Nedstrøms kraftverk (liste)</div>
-                        <div class="value">${selectedPlant.nedstromVannkraftverkNr_Liste}</div>
+                        <div class="value">${formatDownstreamList(selectedPlant.nedstromVannkraftverkNr_Liste)}</div>
                     </div>
                     ` : ''}
 
