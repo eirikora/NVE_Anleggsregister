@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vannkraftverk Visualizer - NVE</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%23f0f0f0' width='32' height='32'/%3E%3Cpath fill='%238B1A1A' d='M18 2L8 16h6l-2 14 12-16h-6l4-12z'/%3E%3C/svg%3E">
+    <link rel="alternate icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAEQSURBVFhH7ZaxDYMwEEWJlBFYgRVYgRVYgRVYgRFYgRXoKBmBjtI4EijYOMb8k04K2H7/2U5OSimllFL6YYzxjtbaM8Y4GWKUuK7r7pz7Sim3itgeRET8wsz2TUppfbTWQs75bq09Qoq4C1LKSyGEjpAitiGldCiEsHwHCBG7EhCEfiYgROxKQBBaJyBIpBP48xB/IOEhtVakiF0QEn4zWmtOSBHbIKV8EELEtuT+vsTvF1LEtrjrPqWcIEVsgxCxsd57q5RSSunvKKWMUsqklHJTxDbknO+11COkiF0YY9xrqUdIEfeg/4f4hwkIEdsiRNyE/r7E7xdSxC1wt/uklBOkiG0QIjbWe2+VUkop/R14PsIXMq1J+n6TAAAAAElFTkSuQmCC">
     <style>
         * {
             margin: 0;
@@ -347,16 +349,28 @@
             color: white;
         }
 
-        .power-large {
+        .power-pumpe {
+            background: #9e9e9e;
+        }
+
+        .power-mikro {
             background: #4caf50;
         }
 
-        .power-medium {
+        .power-mini {
+            background: #81d4fa;
+        }
+
+        .power-sma {
+            background: #2196f3;
+        }
+
+        .power-stor {
             background: #ff9800;
         }
 
-        .power-small {
-            background: #2196f3;
+        .power-meget-stor {
+            background: #f44336;
         }
 
         .error-message {
@@ -723,9 +737,16 @@
             }
 
             resultsDiv.innerHTML = filteredData.map(plant => {
-                const powerClass = (plant.maksYtelse_MW || 0) > 100 ? 'power-large' :
-                                   (plant.maksYtelse_MW || 0) > 20 ? 'power-medium' : 'power-small';
-                const categoryLabel = getCategoryLabel(plant.maksYtelse_MW || 0);
+                const power = plant.maksYtelse_MW || 0;
+                let powerClass;
+                if (power < 0) powerClass = 'power-pumpe';
+                else if (power < 0.1) powerClass = 'power-mikro';
+                else if (power < 1) powerClass = 'power-mini';
+                else if (power < 10) powerClass = 'power-sma';
+                else if (power < 50) powerClass = 'power-stor';
+                else powerClass = 'power-meget-stor';
+
+                const categoryLabel = getCategoryLabel(power);
 
                 return `
                     <div class="result-item ${selectedPlant && selectedPlant.vannkraftverkNr === plant.vannkraftverkNr ? 'selected' : ''}"
