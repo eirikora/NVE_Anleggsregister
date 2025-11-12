@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vannkraftsystemer Visualizer - NVE</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%23f0f0f0' width='32' height='32'/%3E%3Cpath fill='%230066cc' d='M16 2L8 16h16L16 2zM8 18l8 12 8-12H8z'/%3E%3C/svg%3E">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0066cc 0%, #0099ff 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header .stats {
+            font-size: 0.9rem;
+            opacity: 0.95;
+            text-align: right;
+            line-height: 1.6;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 102, 204, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .loading-progress {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .search-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .input-group input, .input-group select {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .reset-btn {
+            padding: 10px 20px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .reset-btn:hover {
+            background: #ee5a52;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 450px 1fr;
+            gap: 20px;
+        }
+
+        .results-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
+
+        .result-item {
+            padding: 12px;
+            border: 2px solid #f0f0f0;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .result-item:hover {
+            border-color: #0066cc;
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
+        }
+
+        .result-item.selected {
+            border-color: #0066cc;
+            background: #e6f2ff;
+        }
+
+        .result-item h3 {
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white !important;
+        }
+
+        .type-badge.vannkraftverk { background: #0066cc; }
+        .type-badge.dam { background: #8B4513; }
+        .type-badge.magasin { background: #1E90FF; }
+        .type-badge.vannvei { background: #4682B4; }
+        .type-badge.inntakspunkt { background: #228B22; }
+        .type-badge.utlopspunkt { background: #FF6347; }
+
+        .result-item .meta {
+            color: #666;
+            font-size: 0.85rem;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .detail-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
+
+        .detail-panel.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-style: italic;
+        }
+
+        .detail-header {
+            border-bottom: 3px solid #0066cc;
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+
+        .detail-header h2 {
+            color: #333;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .detail-header .subtitle {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0066cc;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .detail-item {
+            padding: 10px;
+            background: #f8f9ff;
+            border-radius: 6px;
+        }
+
+        .detail-item .label {
+            font-weight: 600;
+            color: #0066cc;
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .detail-item .value {
+            color: #333;
+            font-size: 0.95rem;
+            word-break: break-word;
+        }
+
+        .detail-item.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .related-items {
+            margin-top: 15px;
+        }
+
+        .related-item {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .related-item:hover {
+            border-color: #0066cc;
+            background: #f8f9ff;
+        }
+
+        .related-item h4 {
+            color: #333;
+            font-size: 0.95rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .related-item .meta {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .maps-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #0066cc 0%, #0099ff 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-top: 10px;
+        }
+
+        .maps-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 102, 204, 0.4);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+
+        @media (max-width: 1024px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Laster vannkraftsystemer fra NVE</div>
+        <div class="loading-progress" id="loadingProgress">Starter...</div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>Vannkraftsystemer i Norge</h1>
+            <div class="stats" id="stats">Laster data...</div>
+        </div>
+
+        <div class="search-panel">
+            <div class="search-grid">
+                <div class="input-group">
+                    <label for="searchName">Søk etter navn</label>
+                    <input type="text" id="searchName" placeholder="Kraftverk, dam, magasin...">
+                </div>
+                <div class="input-group">
+                    <label for="searchType">Type anlegg</label>
+                    <select id="searchType">
+                        <option value="">Alle typer</option>
+                        <option value="vannkraftverk">Vannkraftverk</option>
+                        <option value="dam">Dam</option>
+                        <option value="magasin">Magasin</option>
+                        <option value="vannvei">Vannvei</option>
+                        <option value="inntakspunkt">Inntakspunkt</option>
+                        <option value="utlopspunkt">Utløpspunkt</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="searchKommune">Kommune</label>
+                    <select id="searchKommune">
+                        <option value="">Alle kommuner</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="searchVassdrags">Vassdragsnummer</label>
+                    <input type="text" id="searchVassdrags" placeholder="F.eks. 027.6B">
+                </div>
+            </div>
+            <div class="filter-row">
+                <button class="reset-btn" onclick="resetFilters()">Nullstill alle filtre</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="results-panel" id="resultsPanel">
+                <div class="empty-state">Søk etter et anlegg for å se detaljer</div>
+            </div>
+
+            <div class="detail-panel empty" id="detailPanel">
+                <div class="empty-state">Velg et anlegg fra listen for å se detaljert informasjon og relaterte objekter</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = {
+            vannkraftverk: [],
+            dammer: [],
+            magasiner: [],
+            vannveier: [],
+            inntakspunkt: [],
+            utlopspunkt: []
+        };
+
+        let currentSelection = null;
+        let filteredResults = [];
+        let currentRelatedItems = [];
+
+        // Load data from JSONL files
+        async function loadData() {
+            const loadingProgress = document.getElementById('loadingProgress');
+
+            try {
+                loadingProgress.textContent = 'Laster vannkraftverk...';
+                allData.vannkraftverk = await loadJSONL('../NVE_DATA/vannkraftverk.jsonl');
+
+                loadingProgress.textContent = 'Laster dammer...';
+                allData.dammer = await loadJSONL('../NVE_DATA/dammer.jsonl');
+
+                loadingProgress.textContent = 'Laster magasiner...';
+                allData.magasiner = await loadJSONL('../NVE_DATA/magasiner.jsonl');
+
+                loadingProgress.textContent = 'Laster vannveier...';
+                allData.vannveier = await loadJSONL('../NVE_DATA/vannveier.jsonl');
+
+                loadingProgress.textContent = 'Laster inntakspunkt...';
+                allData.inntakspunkt = await loadJSONL('../NVE_DATA/inntakspunkt.jsonl');
+
+                loadingProgress.textContent = 'Laster utløpspunkt...';
+                allData.utlopspunkt = await loadJSONL('../NVE_DATA/utlopspunkt.jsonl');
+
+                loadingProgress.textContent = 'Ferdig!';
+
+                // Hide loading overlay
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                }, 500);
+
+                // Update stats
+                updateStats();
+
+                // Populate filters
+                populateFilters();
+
+                // Initial filter
+                filterData();
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                loadingProgress.textContent = 'Feil ved lasting av data: ' + error.message;
+            }
+        }
+
+        async function loadJSONL(path) {
+            const response = await fetch(path);
+            if (!response.ok) {
+                throw new Error(`Failed to load ${path}: ${response.statusText}`);
+            }
+            const text = await response.text();
+            const lines = text.trim().split('\n');
+            return lines.map(line => JSON.parse(line));
+        }
+
+        function updateStats() {
+            const stats = document.getElementById('stats');
+            stats.innerHTML = `
+                ${allData.vannkraftverk.length.toLocaleString()} vannkraftverk<br>
+                ${allData.dammer.length.toLocaleString()} dammer<br>
+                ${allData.magasiner.length.toLocaleString()} magasiner<br>
+                ${allData.vannveier.length.toLocaleString()} vannveier<br>
+                ${allData.inntakspunkt.length.toLocaleString()} inntakspunkt<br>
+                ${allData.utlopspunkt.length.toLocaleString()} utløpspunkt
+            `;
+        }
+
+        function populateFilters() {
+            // Get all kommuner
+            const kommuner = new Set();
+
+            allData.vannkraftverk.forEach(v => v.kommuneNavn && kommuner.add(v.kommuneNavn));
+            allData.dammer.forEach(d => d.kommuneNavn && kommuner.add(d.kommuneNavn));
+            allData.magasiner.forEach(m => m.kommuneNavn && kommuner.add(m.kommuneNavn));
+
+            const kommuneSelect = document.getElementById('searchKommune');
+            [...kommuner].sort().forEach(kommune => {
+                const option = document.createElement('option');
+                option.value = kommune;
+                option.textContent = kommune;
+                kommuneSelect.appendChild(option);
+            });
+        }
+
+        function filterData() {
+            const searchName = document.getElementById('searchName').value.toLowerCase();
+            const searchType = document.getElementById('searchType').value;
+            const searchKommune = document.getElementById('searchKommune').value;
+            const searchVassdrags = document.getElementById('searchVassdrags').value.toLowerCase();
+
+            filteredResults = [];
+
+            // Helper function to match filters
+            function matches(item, type) {
+                if (searchName) {
+                    const name = (item.vannkraftverkNavn || item.damNavn || item.magasinNavn || '').toLowerCase();
+                    if (!name.includes(searchName)) return false;
+                }
+
+                if (searchType && searchType !== type) return false;
+
+                if (searchKommune && item.kommuneNavn !== searchKommune) return false;
+
+                if (searchVassdrags && (!item.vassdragsNr || !item.vassdragsNr.toLowerCase().includes(searchVassdrags))) return false;
+
+                return true;
+            }
+
+            // Filter each type
+            if (!searchType || searchType === 'vannkraftverk') {
+                allData.vannkraftverk.forEach(item => {
+                    if (matches(item, 'vannkraftverk')) {
+                        filteredResults.push({ ...item, _type: 'vannkraftverk' });
+                    }
+                });
+            }
+
+            if (!searchType || searchType === 'dam') {
+                allData.dammer.forEach(item => {
+                    if (matches(item, 'dam')) {
+                        filteredResults.push({ ...item, _type: 'dam' });
+                    }
+                });
+            }
+
+            if (!searchType || searchType === 'magasin') {
+                allData.magasiner.forEach(item => {
+                    if (matches(item, 'magasin')) {
+                        filteredResults.push({ ...item, _type: 'magasin' });
+                    }
+                });
+            }
+
+            if (!searchType || searchType === 'vannvei') {
+                allData.vannveier.forEach(item => {
+                    if (matches(item, 'vannvei')) {
+                        filteredResults.push({ ...item, _type: 'vannvei' });
+                    }
+                });
+            }
+
+            if (!searchType || searchType === 'inntakspunkt') {
+                allData.inntakspunkt.forEach(item => {
+                    if (matches(item, 'inntakspunkt')) {
+                        filteredResults.push({ ...item, _type: 'inntakspunkt' });
+                    }
+                });
+            }
+
+            if (!searchType || searchType === 'utlopspunkt') {
+                allData.utlopspunkt.forEach(item => {
+                    if (matches(item, 'utlopspunkt')) {
+                        filteredResults.push({ ...item, _type: 'utlopspunkt' });
+                    }
+                });
+            }
+
+            displayResults();
+        }
+
+        function getItemName(item) {
+            // For items with specific name fields
+            if (item.damNavn) return item.damNavn;
+            if (item.magasinNavn) return item.magasinNavn;
+            if (item.vannkraftverkNavn && item._type === 'vannkraftverk') return item.vannkraftverkNavn;
+
+            // For vannveier - show type and details
+            if (item._type === 'vannvei') {
+                const type = item.objektType || 'Vannvei';
+                const id = item.vannveiID || item.OBJECTID;
+                const lengde = item.vannveiLengde_m ? ` (${Math.round(item.vannveiLengde_m)}m)` : '';
+                return `${type} ${id}${lengde}`;
+            }
+
+            // For inntaks/utløpspunkt - show ID
+            if (item._type === 'inntakspunkt') {
+                const id = item.inntakspunktID || item.OBJECTID;
+                return `Inntakspunkt ${id}`;
+            }
+            if (item._type === 'utlopspunkt') {
+                const id = item.utlopspunktID || item.OBJECTID;
+                return `Utløpspunkt ${id}`;
+            }
+
+            // Fallback
+            return `${item._type} ${item.OBJECTID}`;
+        }
+
+        function displayResults() {
+            const resultsPanel = document.getElementById('resultsPanel');
+
+            if (filteredResults.length === 0) {
+                resultsPanel.innerHTML = '<div class="empty-state">Ingen resultater funnet</div>';
+                return;
+            }
+
+            resultsPanel.innerHTML = filteredResults.slice(0, 200).map((item, index) => {
+                const name = getItemName(item);
+                const kommune = item.kommuneNavn || item.kommunenummer || '';
+                const kdbNr = item.kdbNr || '';
+                const vassdrags = item.vassdragsNr || '';
+
+                return `
+                    <div class="result-item" onclick="selectItem(${index})">
+                        <h3>
+                            <span class="type-badge ${item._type}">${getTypeName(item._type)}</span>
+                            ${name}
+                        </h3>
+                        <div class="meta">
+                            ${kommune ? `<span>📍 ${kommune}</span>` : ''}
+                            ${kdbNr ? `<span>🔑 KDB: ${kdbNr}</span>` : ''}
+                            ${vassdrags ? `<span>💧 ${vassdrags}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (filteredResults.length > 200) {
+                resultsPanel.innerHTML += `<div style="padding: 15px; text-align: center; color: #666;">Viser første 200 av ${filteredResults.length} resultater. Bruk filtre for å begrense søket.</div>`;
+            }
+        }
+
+        function getTypeName(type) {
+            const names = {
+                vannkraftverk: 'Kraftverk',
+                dam: 'Dam',
+                magasin: 'Magasin',
+                vannvei: 'Vannvei',
+                inntakspunkt: 'Inntak',
+                utlopspunkt: 'Utløp'
+            };
+            return names[type] || type;
+        }
+
+        function selectItem(index) {
+            currentSelection = filteredResults[index];
+
+            // Update selected styling
+            document.querySelectorAll('.result-item').forEach((el, i) => {
+                if (i === index) {
+                    el.classList.add('selected');
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+
+            displayDetail(currentSelection);
+        }
+
+        function displayDetail(item) {
+            const detailPanel = document.getElementById('detailPanel');
+            detailPanel.classList.remove('empty');
+
+            const name = getItemName(item);
+
+            let html = `
+                <div class="detail-header">
+                    <h2>
+                        <span class="type-badge ${item._type}">${getTypeName(item._type)}</span>
+                        ${name}
+                    </h2>
+                    <div class="subtitle">OBJECTID: ${item.OBJECTID}</div>
+                </div>
+            `;
+
+            // Show kraftverk prominently if this item belongs to one
+            if (item._type !== 'vannkraftverk' && (item.vannkraftverkNavn || item.vannkraftverkNr)) {
+                let kraftverkNavn = item.vannkraftverkNavn;
+                let kraftverkNr = item.vannkraftverkNr;
+
+                // If we have number but no name, look up the name
+                if (kraftverkNr && !kraftverkNavn) {
+                    const kraftverk = allData.vannkraftverk.find(k => k.vannkraftverkNr === kraftverkNr);
+                    if (kraftverk) {
+                        kraftverkNavn = kraftverk.vannkraftverkNavn;
+                    }
+                }
+
+                if (kraftverkNavn || kraftverkNr) {
+                    const kraftverkInfo = kraftverkNavn && kraftverkNr ?
+                        `${kraftverkNavn} (${kraftverkNr})` :
+                        kraftverkNavn || `Kraftverk ${kraftverkNr}`;
+
+                    const navnForClick = kraftverkNavn ? kraftverkNavn.replace(/'/g, "\\'") : '';
+                    html += `
+                        <div onclick="navigateToKraftverk('${navnForClick}', ${kraftverkNr || 'null'})"
+                             style="background: #e3f2fd; border-left: 4px solid #1976d2; padding: 15px; margin-bottom: 20px; border-radius: 4px; cursor: pointer; transition: background 0.2s;"
+                             onmouseover="this.style.background='#bbdefb'"
+                             onmouseout="this.style.background='#e3f2fd'">
+                            <div style="font-size: 0.85rem; color: #1565c0; font-weight: 600; margin-bottom: 5px;">
+                                ⚡ TILHØRER KRAFTVERK (klikk for å se)
+                            </div>
+                            <div style="font-size: 1.1rem; font-weight: 600; color: #0d47a1;">
+                                ${kraftverkInfo} →
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // Main properties
+            html += '<div class="section"><div class="section-title">Egenskaper</div><div class="detail-grid">';
+
+            const props = getItemProperties(item);
+            props.forEach(prop => {
+                html += `
+                    <div class="detail-item ${prop.fullWidth ? 'full-width' : ''}">
+                        <div class="label">${prop.label}</div>
+                        <div class="value">${prop.value !== null && prop.value !== undefined ? prop.value : '-'}</div>
+                    </div>
+                `;
+            });
+
+            html += '</div></div>';
+
+            // Related items
+            const related = findRelatedItems(item);
+            currentRelatedItems = related; // Store globally
+            if (related.length > 0) {
+                html += '<div class="section"><div class="section-title">Relaterte objekter (' + related.length + ')</div><div class="related-items">';
+                related.forEach((rel, relIndex) => {
+                    const relName = getItemName(rel);
+                    // Show kraftverk info for related items if available and not already shown in relation reason
+                    let metaInfo = rel.relationReason;
+                    if (rel._type !== 'vannkraftverk' && rel.vannkraftverkNavn && !rel.relationReason.includes(rel.vannkraftverkNavn)) {
+                        metaInfo = `⚡ ${rel.vannkraftverkNavn} • ${rel.relationReason}`;
+                    }
+                    html += `
+                        <div class="related-item" data-rel-index="${relIndex}">
+                            <h4>
+                                <span class="type-badge ${rel._type}">${getTypeName(rel._type)}</span>
+                                ${relName}
+                            </h4>
+                            <div class="meta">${metaInfo}</div>
+                        </div>
+                    `;
+                });
+                html += '</div></div>';
+            }
+
+            // Map button
+            if (item.lat && item.lon) {
+                html += `<button class="maps-btn" onclick="openMap(${item.lat}, ${item.lon}, '${name.replace(/'/g, "\\'")}')">Åpne i Google Maps</button>`;
+            } else if (item.center_lat && item.center_lon) {
+                html += `<button class="maps-btn" onclick="openMap(${item.center_lat}, ${item.center_lon}, '${name.replace(/'/g, "\\'")}')">Åpne i Google Maps</button>`;
+            }
+
+            detailPanel.innerHTML = html;
+        }
+
+        function getItemProperties(item) {
+            const props = [];
+            const type = item._type;
+
+            if (type === 'vannkraftverk') {
+                props.push({ label: 'Kraftverksnr', value: item.vannkraftverkNr });
+                props.push({ label: 'Type', value: item.vannkraftverkType });
+                props.push({ label: 'Maks ytelse (MW)', value: item.maksYtelse_MW });
+                props.push({ label: 'Brutto fallhøyde (m)', value: item.bruttoFallhoyde_m });
+                props.push({ label: 'Idriftsatt år', value: item.idriftsattAar });
+                props.push({ label: 'Status', value: item.status });
+                props.push({ label: 'KDB-nummer', value: item.kdbNr });
+                props.push({ label: 'Kommune', value: item.kommuneNavn });
+                props.push({ label: 'Fylke', value: item.fylke });
+                props.push({ label: 'Vassdragsnr', value: item.vassdragsNr });
+                props.push({ label: 'Eier', value: item.vannkraftverkEier, fullWidth: true });
+            } else if (type === 'dam') {
+                props.push({ label: 'Damnr', value: item.damNr });
+                props.push({ label: 'Kategori', value: item.damKategori });
+                props.push({ label: 'Hovedtype', value: item.damHovedType });
+                props.push({ label: 'Høyde damtopp (moh)', value: item.hohDamTopp });
+                props.push({ label: 'Volum oppdemt (Mm³)', value: item.volumOppdemt_Mm3 });
+                props.push({ label: 'Idriftsatt år', value: item.idriftsattAar });
+                props.push({ label: 'Status', value: item.status });
+                props.push({ label: 'KDB-nummer', value: item.kdbNr });
+                props.push({ label: 'Kommune', value: item.kommuneNavn });
+                props.push({ label: 'Fylke', value: item.fylke });
+                props.push({ label: 'Vassdragsnr', value: item.vassdragsNr });
+                props.push({ label: 'Kraftverk', value: item.vannkraftverkNavn });
+                props.push({ label: 'Magasin', value: item.magasinNavn });
+                props.push({ label: 'Damansvarlig', value: item.damAnsvarlig, fullWidth: true });
+            } else if (type === 'magasin') {
+                props.push({ label: 'Magasinnr', value: item.magasinNr });
+                props.push({ label: 'Kategori', value: item.magasinKategori });
+                props.push({ label: 'LRV (moh)', value: item.lavesteRegulerteVannstand_moh });
+                props.push({ label: 'HRV (moh)', value: item.hoyesteRegulerteVannstand_moh });
+                props.push({ label: 'Volum oppdemt (Mm³)', value: item.volumOppdemt_Mm3 });
+                props.push({ label: 'Idriftsatt år', value: item.idriftsattAar });
+                props.push({ label: 'Status', value: item.status });
+                props.push({ label: 'KDB-nummer', value: item.kdbNr });
+                props.push({ label: 'Vassdragsnr', value: item.vassdragsNr });
+                props.push({ label: 'Kraftverk', value: item.vannkraftverkNavn });
+            } else if (type === 'vannvei') {
+                props.push({ label: 'VannveiID', value: item.vannveiID });
+                props.push({ label: 'Objekttype', value: item.objektType });
+                props.push({ label: 'Medium', value: item.medium });
+                props.push({ label: 'Lengde (m)', value: item.vannveiLengde_m });
+                props.push({ label: 'Status', value: item.status });
+                props.push({ label: 'Idriftsatt år', value: item.idriftsattAar });
+                props.push({ label: 'KDB-nummer', value: item.kdbNr });
+                props.push({ label: 'Kraftverk', value: item.vannkraftverkNavn });
+            } else if (type === 'inntakspunkt') {
+                props.push({ label: 'VannveiID', value: item.vannveiID });
+                props.push({ label: 'Inntakstype', value: item.inntakType });
+                props.push({ label: 'Funksjon', value: item.inntakFunksjon });
+                props.push({ label: 'Høyde (moh)', value: item.hoyde_moh });
+                props.push({ label: 'Status', value: item.status });
+                props.push({ label: 'KDB-nummer', value: item.kdbNr });
+                props.push({ label: 'Kraftverk', value: item.vannkraftverkNavn });
+                props.push({ label: 'Delfeltnr', value: item.delfeltNr });
+            } else if (type === 'utlopspunkt') {
+                props.push({ label: 'VannveiID', value: item.vannveiID });
+                props.push({ label: 'Utløpstype', value: item.utlopType });
+                props.push({ label: 'Status', value: item.status });
+                props.push({ label: 'Kraftverksnr', value: item.vannkraftverkNr });
+            }
+
+            if (item.lat && item.lon) {
+                props.push({ label: 'Breddegrad', value: item.lat.toFixed(5) });
+                props.push({ label: 'Lengdegrad', value: item.lon.toFixed(5) });
+            } else if (item.center_lat && item.center_lon) {
+                props.push({ label: 'Breddegrad (senter)', value: item.center_lat.toFixed(5) });
+                props.push({ label: 'Lengdegrad (senter)', value: item.center_lon.toFixed(5) });
+            }
+
+            return props;
+        }
+
+        function findRelatedItems(item) {
+            const related = [];
+            const vannkraftverkNr = item.vannkraftverkNr;
+            const vannkraftverkNavn = item.vannkraftverkNavn;
+            const kdbNr = item.kdbNr;
+            const vassdragsNr = item.vassdragsNr;
+            const vannveiID = item.vannveiID;
+            const magasinNr = item.magasinNr;
+
+            // Find by kraftverksnummer
+            if (vannkraftverkNr) {
+                allData.dammer.forEach(d => {
+                    if (d.vannkraftverkNr === vannkraftverkNr && d.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === d.OBJECTID && r._type === 'dam')) {
+                        related.push({ ...d, _type: 'dam', relationReason: `Samme kraftverk (${vannkraftverkNr})` });
+                    }
+                });
+                allData.magasiner.forEach(m => {
+                    if (m.vannkraftverkNr === vannkraftverkNr && m.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === m.OBJECTID && r._type === 'magasin')) {
+                        related.push({ ...m, _type: 'magasin', relationReason: `Samme kraftverk (${vannkraftverkNr})` });
+                    }
+                });
+                allData.vannveier.forEach(v => {
+                    if (v.vannkraftverkNr === vannkraftverkNr && v.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === v.OBJECTID && r._type === 'vannvei')) {
+                        related.push({ ...v, _type: 'vannvei', relationReason: `Samme kraftverk (${vannkraftverkNr})` });
+                    }
+                });
+                allData.inntakspunkt.forEach(i => {
+                    if (i.vannkraftverkNr === vannkraftverkNr && i.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === i.OBJECTID && r._type === 'inntakspunkt')) {
+                        related.push({ ...i, _type: 'inntakspunkt', relationReason: `Samme kraftverk (${vannkraftverkNr})` });
+                    }
+                });
+                allData.utlopspunkt.forEach(u => {
+                    if (u.vannkraftverkNr === vannkraftverkNr && u.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === u.OBJECTID && r._type === 'utlopspunkt')) {
+                        related.push({ ...u, _type: 'utlopspunkt', relationReason: `Samme kraftverk (${vannkraftverkNr})` });
+                    }
+                });
+            }
+
+            // Find by kraftverksnavn (hvis objektet er et kraftverk)
+            if (item._type === 'vannkraftverk' && vannkraftverkNavn) {
+                allData.dammer.forEach(d => {
+                    if (d.vannkraftverkNavn === vannkraftverkNavn && !related.some(r => r.OBJECTID === d.OBJECTID)) {
+                        related.push({ ...d, _type: 'dam', relationReason: `Tilhører kraftverk: ${vannkraftverkNavn}` });
+                    }
+                });
+                allData.magasiner.forEach(m => {
+                    if (m.vannkraftverkNavn === vannkraftverkNavn && !related.some(r => r.OBJECTID === m.OBJECTID)) {
+                        related.push({ ...m, _type: 'magasin', relationReason: `Tilhører kraftverk: ${vannkraftverkNavn}` });
+                    }
+                });
+                allData.vannveier.forEach(v => {
+                    if (v.vannkraftverkNavn === vannkraftverkNavn && !related.some(r => r.OBJECTID === v.OBJECTID)) {
+                        related.push({ ...v, _type: 'vannvei', relationReason: `Tilhører kraftverk: ${vannkraftverkNavn}` });
+                    }
+                });
+                allData.inntakspunkt.forEach(i => {
+                    if (i.vannkraftverkNavn === vannkraftverkNavn && !related.some(r => r.OBJECTID === i.OBJECTID)) {
+                        related.push({ ...i, _type: 'inntakspunkt', relationReason: `Tilhører kraftverk: ${vannkraftverkNavn}` });
+                    }
+                });
+                allData.utlopspunkt.forEach(u => {
+                    if (u.vannkraftverkNavn === vannkraftverkNavn && !related.some(r => r.OBJECTID === u.OBJECTID)) {
+                        related.push({ ...u, _type: 'utlopspunkt', relationReason: `Tilhører kraftverk: ${vannkraftverkNavn}` });
+                    }
+                });
+            }
+
+            // Find by KDB-nummer
+            if (kdbNr && !related.some(r => r.kdbNr === kdbNr)) {
+                ['vannkraftverk', 'dammer', 'magasiner', 'vannveier', 'inntakspunkt'].forEach(dataType => {
+                    allData[dataType].forEach(obj => {
+                        if (obj.kdbNr === kdbNr && obj.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === obj.OBJECTID)) {
+                            related.push({ ...obj, _type: dataType.replace(/er$/, '').replace(/punkt$/, 'punkt'), relationReason: `Samme konsesjon (KDB: ${kdbNr})` });
+                        }
+                    });
+                });
+            }
+
+            // Find by vassdragsnummer
+            if (vassdragsNr && related.length < 20) {
+                ['vannkraftverk', 'dammer', 'magasiner'].forEach(dataType => {
+                    allData[dataType].forEach(obj => {
+                        if (obj.vassdragsNr === vassdragsNr && obj.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === obj.OBJECTID)) {
+                            related.push({ ...obj, _type: dataType.replace(/er$/, ''), relationReason: `Samme vassdrag (${vassdragsNr})` });
+                        }
+                    });
+                });
+            }
+
+            // Find by vannveiID
+            if (vannveiID) {
+                allData.vannveier.forEach(v => {
+                    if (v.vannveiID === vannveiID && v.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === v.OBJECTID)) {
+                        related.push({ ...v, _type: 'vannvei', relationReason: `Samme vannvei-ID (${vannveiID})` });
+                    }
+                });
+                allData.inntakspunkt.forEach(i => {
+                    if (i.vannveiID === vannveiID && i.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === i.OBJECTID)) {
+                        related.push({ ...i, _type: 'inntakspunkt', relationReason: `Samme vannvei-ID (${vannveiID})` });
+                    }
+                });
+                allData.utlopspunkt.forEach(u => {
+                    if (u.vannveiID === vannveiID && u.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === u.OBJECTID)) {
+                        related.push({ ...u, _type: 'utlopspunkt', relationReason: `Samme vannvei-ID (${vannveiID})` });
+                    }
+                });
+            }
+
+            // Find by magasinnummer
+            if (magasinNr) {
+                allData.dammer.forEach(d => {
+                    if (d.magasinNr === magasinNr && d.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === d.OBJECTID)) {
+                        related.push({ ...d, _type: 'dam', relationReason: `Samme magasin (${magasinNr})` });
+                    }
+                });
+            }
+
+            // Find by kraftverksnavn (hvis vi ikke har kraftverksnummer)
+            if (vannkraftverkNavn && !vannkraftverkNr) {
+                allData.vannkraftverk.forEach(k => {
+                    if (k.vannkraftverkNavn === vannkraftverkNavn && !related.some(r => r.OBJECTID === k.OBJECTID)) {
+                        related.push({ ...k, _type: 'vannkraftverk', relationReason: `Kraftverk: ${vannkraftverkNavn}` });
+                    }
+                });
+            }
+
+            return related.slice(0, 50); // Limit to 50 related items
+        }
+
+        function selectRelatedByIndex(relIndex) {
+            if (relIndex < 0 || relIndex >= currentRelatedItems.length) {
+                console.error('Invalid related item index:', relIndex);
+                return;
+            }
+            const relatedItem = currentRelatedItems[relIndex];
+            selectRelated(relatedItem);
+        }
+
+        function selectRelated(relatedItem) {
+            // Find the item in filteredResults or add it temporarily
+            let index = filteredResults.findIndex(r => r.OBJECTID === relatedItem.OBJECTID && r._type === relatedItem._type);
+
+            // If item is not found OR is beyond the first 200 displayed items, add it to the top
+            if (index === -1 || index >= 200) {
+                // Remove from current position if it exists
+                if (index !== -1) {
+                    filteredResults.splice(index, 1);
+                }
+                // Item not in current filtered results, add it temporarily at the top
+                filteredResults.unshift(relatedItem);
+                displayResults();
+                index = 0;
+            }
+
+            // Scroll to and select the item
+            const resultItems = document.querySelectorAll('.result-item');
+            if (resultItems[index]) {
+                resultItems[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                selectItem(index);
+            }
+        }
+
+        function navigateToKraftverk(kraftverkNavn, kraftverkNr) {
+            // Find the kraftverk in allData
+            let kraftverk = null;
+
+            if (kraftverkNr) {
+                kraftverk = allData.vannkraftverk.find(k => k.vannkraftverkNr === kraftverkNr);
+            }
+
+            if (!kraftverk && kraftverkNavn) {
+                kraftverk = allData.vannkraftverk.find(k => k.vannkraftverkNavn === kraftverkNavn);
+            }
+
+            if (kraftverk) {
+                // Add _type for consistency
+                const kraftverkWithType = { ...kraftverk, _type: 'vannkraftverk' };
+                selectRelated(kraftverkWithType);
+            } else {
+                alert('Kunne ikke finne kraftverk: ' + kraftverkNavn);
+            }
+        }
+
+        function openMap(lat, lon, name) {
+            const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}&query_place_id=${encodeURIComponent(name)}`;
+            window.open(url, '_blank');
+        }
+
+        function resetFilters() {
+            document.getElementById('searchName').value = '';
+            document.getElementById('searchType').value = '';
+            document.getElementById('searchKommune').value = '';
+            document.getElementById('searchVassdrags').value = '';
+            filterData();
+        }
+
+        // Wait for DOM to be fully loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        function init() {
+            // Event listeners
+            document.getElementById('searchName').addEventListener('input', filterData);
+            document.getElementById('searchType').addEventListener('change', filterData);
+            document.getElementById('searchKommune').addEventListener('change', filterData);
+            document.getElementById('searchVassdrags').addEventListener('input', filterData);
+
+            // Event delegation for related items
+            const detailPanel = document.getElementById('detailPanel');
+            if (detailPanel) {
+                detailPanel.addEventListener('click', function(e) {
+                    const relatedItem = e.target.closest('.related-item');
+                    if (relatedItem && relatedItem.dataset.relIndex !== undefined) {
+                        const relIndex = parseInt(relatedItem.dataset.relIndex, 10);
+                        selectRelatedByIndex(relIndex);
+                    }
+                });
+            }
+
+            // Make functions globally accessible for onclick handlers in innerHTML
+            window.selectItem = selectItem;
+            window.selectRelatedByIndex = selectRelatedByIndex;
+            window.openMap = openMap;
+            window.resetFilters = resetFilters;
+            window.navigateToKraftverk = navigateToKraftverk;
+
+            // Load data on page load
+            loadData();
+        }
+    </script>
+</body>
+</html>
