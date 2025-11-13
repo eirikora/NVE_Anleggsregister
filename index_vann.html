@@ -202,14 +202,15 @@
             font-size: 0.75rem;
             font-weight: 600;
             color: white !important;
+            background: #666; /* Default background for unknown types */
         }
 
-        .type-badge.vannkraftverk { background: #0066cc; }
-        .type-badge.dam { background: #8B4513; }
-        .type-badge.magasin { background: #1E90FF; }
-        .type-badge.vannvei { background: #4682B4; }
-        .type-badge.inntakspunkt { background: #228B22; }
-        .type-badge.utlopspunkt { background: #FF6347; }
+        .type-badge.vannkraftverk { background: #0066cc !important; }
+        .type-badge.dam { background: #8B4513 !important; }
+        .type-badge.magasin { background: #1E90FF !important; }
+        .type-badge.vannvei { background: #4682B4 !important; }
+        .type-badge.inntakspunkt { background: #228B22 !important; }
+        .type-badge.utlopspunkt { background: #FF6347 !important; }
 
         .result-item .meta {
             color: #666;
@@ -333,22 +334,57 @@
         }
 
         .maps-btn {
-            width: 100%;
-            padding: 12px;
+            padding: 8px 14px;
             background: linear-gradient(135deg, #0066cc 0%, #0099ff 100%);
             color: white;
             border: none;
             border-radius: 6px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.3s, box-shadow 0.3s;
-            margin-top: 10px;
+            transition: all 0.2s;
+            white-space: nowrap;
         }
 
         .maps-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 102, 204, 0.4);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.4);
+        }
+
+        .konsesjon-btn {
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .konsesjon-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
+        }
+
+        .utbygd-btn {
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #c62828 0%, #e53935 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .utbygd-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(198, 40, 40, 0.4);
         }
 
         .empty-state {
@@ -459,6 +495,18 @@
                 loadingProgress.textContent = 'Laster utløpspunkt...';
                 allData.utlopspunkt = await loadJSONL('../NVE_DATA/utlopspunkt.jsonl');
 
+                loadingProgress.textContent = 'Beriking data...';
+
+                // Enrich utløpspunkt with vannkraftverkNavn (missing from NVE API)
+                allData.utlopspunkt.forEach(utlop => {
+                    if (utlop.vannkraftverkNr && !utlop.vannkraftverkNavn) {
+                        const kraftverk = allData.vannkraftverk.find(k => k.vannkraftverkNr === utlop.vannkraftverkNr);
+                        if (kraftverk) {
+                            utlop.vannkraftverkNavn = kraftverk.vannkraftverkNavn;
+                        }
+                    }
+                });
+
                 loadingProgress.textContent = 'Ferdig!';
 
                 // Hide loading overlay
@@ -531,13 +579,20 @@
             // Helper function to match filters
             function matches(item, type) {
                 if (searchName) {
-                    const name = (item.vannkraftverkNavn || item.damNavn || item.magasinNavn || '').toLowerCase();
-                    if (!name.includes(searchName)) return false;
+                    // Build a search string with all relevant names
+                    const searchableText = [
+                        item.vannkraftverkNavn,
+                        item.damNavn,
+                        item.magasinNavn
+                    ].filter(Boolean).join(' ').toLowerCase();
+
+                    if (!searchableText.includes(searchName)) return false;
                 }
 
                 if (searchType && searchType !== type) return false;
 
-                if (searchKommune && item.kommuneNavn !== searchKommune) return false;
+                // Only apply kommune filter if the item has kommuneNavn field
+                if (searchKommune && item.kommuneNavn && item.kommuneNavn !== searchKommune) return false;
 
                 if (searchVassdrags && (!item.vassdragsNr || !item.vassdragsNr.toLowerCase().includes(searchVassdrags))) return false;
 
@@ -691,13 +746,38 @@
 
             const name = getItemName(item);
 
+            // Build action buttons HTML
+            let actionButtons = '';
+
+            // Map button
+            if (item.lat && item.lon) {
+                actionButtons += `<button class="maps-btn" onclick="openMap(${item.lat}, ${item.lon}, '${name.replace(/'/g, "\\'")}')">🗺️ Maps</button>`;
+            } else if (item.center_lat && item.center_lon) {
+                actionButtons += `<button class="maps-btn" onclick="openMap(${item.center_lat}, ${item.center_lon}, '${name.replace(/'/g, "\\'")}')">🗺️ Maps</button>`;
+            }
+
+            // KDB/Konsesjon button
+            if (item.kdbNr) {
+                actionButtons += `<button class="konsesjon-btn" onclick="openInKonsesjon(${item.kdbNr})">📋 KDB</button>`;
+            }
+
+            // Utbygd button (only for vannkraftverk)
+            if (item._type === 'vannkraftverk' && item.vannkraftverkNr) {
+                actionButtons += `<button class="utbygd-btn" onclick="openInUtbygd(${item.vannkraftverkNr})">🏭 Utbygd</button>`;
+            }
+
             let html = `
                 <div class="detail-header">
-                    <h2>
-                        <span class="type-badge ${item._type}">${getTypeName(item._type)}</span>
-                        ${name}
-                    </h2>
-                    <div class="subtitle">OBJECTID: ${item.OBJECTID}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
+                        <div style="flex: 1; min-width: 0;">
+                            <h2>
+                                <span class="type-badge ${item._type}">${getTypeName(item._type)}</span>
+                                ${name}
+                            </h2>
+                            <div class="subtitle">OBJECTID: ${item.OBJECTID}</div>
+                        </div>
+                        ${actionButtons ? `<div style="display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0;">${actionButtons}</div>` : ''}
+                    </div>
                 </div>
             `;
 
@@ -763,6 +843,7 @@
                     if (rel._type !== 'vannkraftverk' && rel.vannkraftverkNavn && !rel.relationReason.includes(rel.vannkraftverkNavn)) {
                         metaInfo = `⚡ ${rel.vannkraftverkNavn} • ${rel.relationReason}`;
                     }
+
                     html += `
                         <div class="related-item" data-rel-index="${relIndex}">
                             <h4>
@@ -774,13 +855,6 @@
                     `;
                 });
                 html += '</div></div>';
-            }
-
-            // Map button
-            if (item.lat && item.lon) {
-                html += `<button class="maps-btn" onclick="openMap(${item.lat}, ${item.lon}, '${name.replace(/'/g, "\\'")}')">Åpne i Google Maps</button>`;
-            } else if (item.center_lat && item.center_lon) {
-                html += `<button class="maps-btn" onclick="openMap(${item.center_lat}, ${item.center_lon}, '${name.replace(/'/g, "\\'")}')">Åpne i Google Maps</button>`;
             }
 
             detailPanel.innerHTML = html;
@@ -873,6 +947,20 @@
             const vannveiID = item.vannveiID;
             const magasinNr = item.magasinNr;
 
+            // If this object belongs to a kraftverk, add the kraftverk first
+            if (item._type !== 'vannkraftverk' && (vannkraftverkNr || vannkraftverkNavn)) {
+                let kraftverk = null;
+                if (vannkraftverkNr) {
+                    kraftverk = allData.vannkraftverk.find(k => k.vannkraftverkNr === vannkraftverkNr);
+                }
+                if (!kraftverk && vannkraftverkNavn) {
+                    kraftverk = allData.vannkraftverk.find(k => k.vannkraftverkNavn === vannkraftverkNavn);
+                }
+                if (kraftverk) {
+                    related.push({ ...kraftverk, _type: 'vannkraftverk', relationReason: 'Tilhører dette kraftverket' });
+                }
+            }
+
             // Find by kraftverksnummer
             if (vannkraftverkNr) {
                 allData.dammer.forEach(d => {
@@ -933,10 +1021,17 @@
 
             // Find by KDB-nummer
             if (kdbNr && !related.some(r => r.kdbNr === kdbNr)) {
+                const typeMap = {
+                    'vannkraftverk': 'vannkraftverk',
+                    'dammer': 'dam',
+                    'magasiner': 'magasin',
+                    'vannveier': 'vannvei',
+                    'inntakspunkt': 'inntakspunkt'
+                };
                 ['vannkraftverk', 'dammer', 'magasiner', 'vannveier', 'inntakspunkt'].forEach(dataType => {
                     allData[dataType].forEach(obj => {
                         if (obj.kdbNr === kdbNr && obj.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === obj.OBJECTID)) {
-                            related.push({ ...obj, _type: dataType.replace(/er$/, '').replace(/punkt$/, 'punkt'), relationReason: `Samme konsesjon (KDB: ${kdbNr})` });
+                            related.push({ ...obj, _type: typeMap[dataType], relationReason: `Samme konsesjon (KDB: ${kdbNr})` });
                         }
                     });
                 });
@@ -944,10 +1039,15 @@
 
             // Find by vassdragsnummer
             if (vassdragsNr && related.length < 20) {
+                const typeMap = {
+                    'vannkraftverk': 'vannkraftverk',
+                    'dammer': 'dam',
+                    'magasiner': 'magasin'
+                };
                 ['vannkraftverk', 'dammer', 'magasiner'].forEach(dataType => {
                     allData[dataType].forEach(obj => {
                         if (obj.vassdragsNr === vassdragsNr && obj.OBJECTID !== item.OBJECTID && !related.some(r => r.OBJECTID === obj.OBJECTID)) {
-                            related.push({ ...obj, _type: dataType.replace(/er$/, ''), relationReason: `Samme vassdrag (${vassdragsNr})` });
+                            related.push({ ...obj, _type: typeMap[dataType], relationReason: `Samme vassdrag (${vassdragsNr})` });
                         }
                     });
                 });
@@ -1052,6 +1152,16 @@
             window.open(url, '_blank');
         }
 
+        function openInKonsesjon(kdbNr) {
+            const url = `http://konsesjoner/Vassdrag/Vassdrag/Details/${kdbNr}`;
+            window.open(url, '_blank');
+        }
+
+        function openInUtbygd(kraftverksID) {
+            const url = `http://utbygd/Vannkraft/Kraftverk/Details/${kraftverksID}`;
+            window.open(url, '_blank');
+        }
+
         function resetFilters() {
             document.getElementById('searchName').value = '';
             document.getElementById('searchType').value = '';
@@ -1092,6 +1202,8 @@
             window.openMap = openMap;
             window.resetFilters = resetFilters;
             window.navigateToKraftverk = navigateToKraftverk;
+            window.openInKonsesjon = openInKonsesjon;
+            window.openInUtbygd = openInUtbygd;
 
             // Load data on page load
             loadData();
