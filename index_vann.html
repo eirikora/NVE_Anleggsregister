@@ -564,30 +564,29 @@
         let graphEdges = new vis.DataSet([]);
         let currentGraphKraftverk = null; // Track which kraftverk is currently shown in graph
 
-        // Load data from JSONL files
+        // Load data from combined JSON file
         async function loadData() {
             const loadingProgress = document.getElementById('loadingProgress');
 
             try {
-                loadingProgress.textContent = 'Laster vannkraftverk...';
-                allData.vannkraftverk = await loadJSONL('../NVE_DATA/vannkraftverk.jsonl');
+                loadingProgress.textContent = 'Laster vannkraftsystemer...';
 
-                loadingProgress.textContent = 'Laster dammer...';
-                allData.dammer = await loadJSONL('../NVE_DATA/dammer.jsonl');
+                const response = await fetch('vannkraft-data.json');
+                if (!response.ok) {
+                    throw new Error(`Failed to load data: ${response.statusText}`);
+                }
 
-                loadingProgress.textContent = 'Laster magasiner...';
-                allData.magasiner = await loadJSONL('../NVE_DATA/magasiner.jsonl');
+                const data = await response.json();
 
-                loadingProgress.textContent = 'Laster vannveier...';
-                allData.vannveier = await loadJSONL('../NVE_DATA/vannveier.jsonl');
+                // Assign data to allData object
+                allData.vannkraftverk = data.vannkraftverk;
+                allData.dammer = data.dammer;
+                allData.magasiner = data.magasiner;
+                allData.vannveier = data.vannveier;
+                allData.inntakspunkt = data.inntakspunkt;
+                allData.utlopspunkt = data.utlopspunkt;
 
-                loadingProgress.textContent = 'Laster inntakspunkt...';
-                allData.inntakspunkt = await loadJSONL('../NVE_DATA/inntakspunkt.jsonl');
-
-                loadingProgress.textContent = 'Laster utløpspunkt...';
-                allData.utlopspunkt = await loadJSONL('../NVE_DATA/utlopspunkt.jsonl');
-
-                loadingProgress.textContent = 'Beriking data...';
+                loadingProgress.textContent = 'Berikelse av data...';
 
                 // Enrich utløpspunkt with vannkraftverkNavn (missing from NVE API)
                 allData.utlopspunkt.forEach(utlop => {
@@ -619,16 +618,6 @@
                 console.error('Error loading data:', error);
                 loadingProgress.textContent = 'Feil ved lasting av data: ' + error.message;
             }
-        }
-
-        async function loadJSONL(path) {
-            const response = await fetch(path);
-            if (!response.ok) {
-                throw new Error(`Failed to load ${path}: ${response.statusText}`);
-            }
-            const text = await response.text();
-            const lines = text.trim().split('\n');
-            return lines.map(line => JSON.parse(line));
         }
 
         function updateStats() {
