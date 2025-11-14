@@ -62,6 +62,31 @@ Level 2: Magasin (when connected to a Dam via magasinNr)
 - **From graph click:** Horizontal pan only (keeps top visible)
 - **Scroll prevention:** Graph focusing doesn't trigger page scrolling
 
+### Filtering and Categorization
+
+**Vannkraftverk Categories:**
+Vannkraftverk are categorized based on `maksYtelse_MW` and `vannkraftverkType`:
+- **Mikro** (<1 MW) - Small-scale hydropower, often private installations
+- **Mini** (1-10 MW) - Small hydropower plants
+- **Små** (10-100 MW) - Medium-sized plants
+- **Store** (>100 MW) - Large power plants
+- **Pumpe** (Pump storage) - Type 'P' or 'PK', or name contains "pumpe"
+
+**Type Codes in Data:**
+- `KS` - Kraftstasjon (power station)
+- `K` - Kraftverk (power plant)
+- `Mini` - Mini hydropower
+- `Mikro` - Micro hydropower
+- `P` - Pumpekraftverk (pumped-storage)
+- `PK` - Pumpekraftverk kombinert (combined pump storage)
+
+**Filter Combinations:**
+All filters work together (AND logic):
+- Name search (substring match)
+- Type category (vannkraftverk size classes, dam, magasin, etc.)
+- Kommune (exact match)
+- Vassdragsnummer (substring match)
+
 ### Visual Styling
 - **Selected node:** Gold/yellow neon glow (25px shadow)
 - **Type indicators:** Node labels show name + type in parentheses

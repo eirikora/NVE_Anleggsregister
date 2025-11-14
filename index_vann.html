@@ -523,12 +523,21 @@
                         <label for="searchType">Type anlegg</label>
                         <select id="searchType">
                             <option value="">Alle typer</option>
-                            <option value="vannkraftverk">Vannkraftverk</option>
-                            <option value="dam">Dam</option>
-                            <option value="magasin">Magasin</option>
-                            <option value="vannvei">Vannvei</option>
-                            <option value="inntakspunkt">Inntakspunkt</option>
-                            <option value="utlopspunkt">Utløpspunkt</option>
+                            <optgroup label="Vannkraftverk">
+                                <option value="vannkraftverk">Alle vannkraftverk</option>
+                                <option value="vannkraftverk-mikro">⚡ Mikrokraftverk (<1 MW)</option>
+                                <option value="vannkraftverk-mini">⚡ Minikraftverk (1-10 MW)</option>
+                                <option value="vannkraftverk-sma">⚡ Små kraftverk (10-100 MW)</option>
+                                <option value="vannkraftverk-store">⚡ Store kraftverk (>100 MW)</option>
+                                <option value="vannkraftverk-pumpe">⚡ Pumpekraftverk</option>
+                            </optgroup>
+                            <optgroup label="Andre anlegg">
+                                <option value="dam">Dam</option>
+                                <option value="magasin">Magasin</option>
+                                <option value="vannvei">Vannvei</option>
+                                <option value="inntakspunkt">Inntakspunkt</option>
+                                <option value="utlopspunkt">Utløpspunkt</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div class="input-group">
@@ -650,12 +659,35 @@
 
         function updateStats() {
             const stats = document.getElementById('stats');
+
+            // Categorize vannkraftverk by size
+            let mikro = 0, mini = 0, sma = 0, store = 0, pumpe = 0;
+            allData.vannkraftverk.forEach(v => {
+                const ytelse = v.maksYtelse_MW || 0;
+                const vkType = v.vannkraftverkType || '';
+
+                if (vkType === 'P' || vkType === 'PK') {
+                    pumpe++;
+                } else if (ytelse < 1 || vkType === 'Mikro') {
+                    mikro++;
+                } else if (ytelse < 10 || vkType === 'Mini') {
+                    mini++;
+                } else if (ytelse < 100) {
+                    sma++;
+                } else {
+                    store++;
+                }
+            });
+
             stats.innerHTML = `
-                ${allData.vannkraftverk.length.toLocaleString()} vannkraftverk<br>
-                ${allData.dammer.length.toLocaleString()} dammer<br>
+                <strong>${allData.vannkraftverk.length.toLocaleString()} vannkraftverk</strong><br>
+                <span style="font-size: 0.85em; opacity: 0.9;">
+                  Mikro: ${mikro} | Mini: ${mini} | Små: ${sma} | Store: ${store} | Pumpe: ${pumpe}
+                </span><br>
+                ${allData.dammer.length.toLocaleString()} dammer |
                 ${allData.magasiner.length.toLocaleString()} magasiner<br>
-                ${allData.vannveier.length.toLocaleString()} vannveier<br>
-                ${allData.inntakspunkt.length.toLocaleString()} inntakspunkt<br>
+                ${allData.vannveier.length.toLocaleString()} vannveier |
+                ${allData.inntakspunkt.length.toLocaleString()} inntakspunkt |
                 ${allData.utlopspunkt.length.toLocaleString()} utløpspunkt
             `;
         }
@@ -698,7 +730,16 @@
                     if (!searchableText.includes(searchName)) return false;
                 }
 
-                if (searchType && searchType !== type) return false;
+                // Handle vannkraftverk subcategories (vannkraftverk-mikro, vannkraftverk-mini, etc.)
+                if (searchType) {
+                    if (searchType.startsWith('vannkraftverk')) {
+                        // For vannkraftverk subcategories, match against 'vannkraftverk' type
+                        if (type !== 'vannkraftverk') return false;
+                    } else {
+                        // For other types, exact match
+                        if (searchType !== type) return false;
+                    }
+                }
 
                 // Only apply kommune filter if the item has kommuneNavn field
                 if (searchKommune && item.kommuneNavn && item.kommuneNavn !== searchKommune) return false;
@@ -708,10 +749,35 @@
                 return true;
             }
 
-            // Filter each type
-            if (!searchType || searchType === 'vannkraftverk') {
+            // Helper function to categorize kraftverk
+            function matchesKraftverkCategory(item, searchType) {
+                if (!searchType || searchType === '' || searchType === 'vannkraftverk') {
+                    return true; // Show all kraftverk
+                }
+
+                const ytelse = item.maksYtelse_MW || 0;
+                const vkType = item.vannkraftverkType || '';
+
+                switch (searchType) {
+                    case 'vannkraftverk-mikro':
+                        return ytelse < 1 || vkType === 'Mikro';
+                    case 'vannkraftverk-mini':
+                        return (ytelse >= 1 && ytelse < 10) || vkType === 'Mini';
+                    case 'vannkraftverk-sma':
+                        return ytelse >= 10 && ytelse < 100;
+                    case 'vannkraftverk-store':
+                        return ytelse >= 100;
+                    case 'vannkraftverk-pumpe':
+                        return vkType === 'P' || vkType === 'PK' || item.vannkraftverkNavn?.toLowerCase().includes('pumpe');
+                    default:
+                        return false;
+                }
+            }
+
+            // Filter vannkraftverk with categories
+            if (!searchType || searchType.startsWith('vannkraftverk')) {
                 allData.vannkraftverk.forEach(item => {
-                    if (matches(item, 'vannkraftverk')) {
+                    if (matches(item, 'vannkraftverk') && matchesKraftverkCategory(item, searchType)) {
                         filteredResults.push({ ...item, _type: 'vannkraftverk' });
                     }
                 });
