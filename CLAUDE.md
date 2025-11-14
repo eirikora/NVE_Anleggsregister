@@ -1,0 +1,99 @@
+# NVE Anleggsregister - Vannkraftsystemer Visualizer
+
+## Project Overview
+Interactive web application for visualizing Norwegian hydropower system data from NVE (Norwegian Water Resources and Energy Directorate).
+
+## Data Structure
+- **JSONL files** containing:
+  - `vannkraftverk.jsonl` - Power plants
+  - `dammer.jsonl` - Dams
+  - `magasiner.jsonl` - Reservoirs
+  - `vannveier.jsonl` - Water conduits
+  - `inntakspunkt.jsonl` - Intake points
+  - `utlopspunkt.jsonl` - Outlet points
+
+## Key Files
+- `index_vann.html` - Main application (single-file architecture)
+- `lastned_nve_vannkraftverk.py` - Download script for power plant data
+- Similar download scripts for other data types
+
+## Layout Architecture
+**2x2 Grid Layout:**
+- **Top-left:** Header + Search filters (compact horizontal layout)
+- **Top-right:** Relationship graph (always visible)
+- **Bottom-left:** Search results list
+- **Bottom-right:** Detail panel for selected object
+
+## Relationship Graph (vis.js)
+
+### Graph Behavior
+- **Shows:** Only the current kraftverk and its direct children
+- **Clears when:** Switching to a different kraftverk
+- **Persists when:** Clicking on nodes within the same kraftverk
+
+### Hierarchy
+```
+Level 0: Kraftverk (top)
+Level 1: Dam, Magasin, Vannvei (sorted by type)
+Level 2: Inntakspunkt, Utløpspunkt
+```
+
+### Focus Logic
+- **From result list:** Full focus (horizontal + vertical)
+- **From graph click:** Horizontal pan only (keeps top visible)
+- **Scroll prevention:** Graph focusing doesn't trigger page scrolling
+
+### Visual Styling
+- **Selected node:** Gold/yellow neon glow (25px shadow)
+- **Type indicators:** Node labels show name + type in parentheses
+- **Hierarchical layout:** Top-down with directed edges
+
+## Important Functions
+
+### `findDirectRelations(item)`
+Returns only direct "downward" relations:
+- Kraftverk → returns all its components
+- Other types → returns empty array (to keep graph clean)
+
+### `updateGraph(centerItem, relatedItems, focusNode = true)`
+- `focusNode = true`: Full focus on node (from list)
+- `focusNode = false`: Horizontal pan only (from graph)
+- Clears graph only when switching kraftverk
+- Preserves scroll position during focus
+
+### `selectRelated(relatedItem, shouldScroll = true, focusInGraph = true)`
+- `shouldScroll`: Whether to scroll result list to item
+- `focusInGraph`: Whether to focus graph on node
+
+## Data Relationships
+Objects are related by:
+- `vannkraftverkNr` / `vannkraftverkNavn` - Parent power plant
+- `vannveiID` - Water conduit connections
+- `magasinNr` - Reservoir connections
+- `kdbNr` - Concession database number
+- `vassdragsNr` - Watershed number
+
+## External Links
+- **Maps:** Google Maps with coordinates
+- **KDB:** NVE concession database
+- **Utbygd:** Detailed power plant information system
+
+## Key Technical Decisions
+
+1. **Single-file architecture** for easy deployment
+2. **Client-side only** - all data loaded at startup
+3. **Graph state management** with `currentGraphKraftverk` to track displayed kraftverk
+4. **Scroll prevention** using `window.scrollTo()` after graph operations
+5. **Event delegation** for dynamic content handling
+6. **Compact filter layout** (label left, input right) to save vertical space
+
+## Performance Considerations
+- Results limited to 200 items in display
+- Graph nodes limited by `findDirectRelations()` logic
+- Lazy updates: don't recreate graph if already showing correct kraftverk
+
+## Styling Notes
+- Gradient backgrounds for visual hierarchy
+- Color-coded badges by object type
+- Box-shadow glow effects for selected states
+- Responsive breakpoint at 1400px switches to vertical stacking
