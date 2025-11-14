@@ -932,61 +932,115 @@
             const clickedNodeId = getNodeId(centerItem);
             const nodeExistsInGraph = graphNodes.get(clickedNodeId) !== null;
 
-            // If the node exists in current graph, just highlight it
-            if (nodeExistsInGraph && graphNetwork) {
-                graphNetwork.selectNodes([clickedNodeId]);
+            // Determine which kraftverk this item belongs to and decide if we should clear
+            let itemKraftverkId = null;
+            let shouldClearGraph = false;
 
-                if (focusNode) {
-                    // Prevent page scrolling during graph focus
-                    const scrollX = window.scrollX;
-                    const scrollY = window.scrollY;
+            if (centerItem._type === 'vannkraftverk') {
+                itemKraftverkId = centerItem.vannkraftverkNr || centerItem.vannkraftverkNavn || centerItem.OBJECTID;
 
-                    // Focus fully on the node (from result list)
-                    graphNetwork.focus(clickedNodeId, {
-                        scale: 1.0,
-                        animation: {
-                            duration: 500,
-                            easingFunction: 'easeInOutQuad'
+                // For kraftverk: clear graph unless this kraftverk is already at level 0
+                if (nodeExistsInGraph) {
+                    const existingNode = graphNodes.get(clickedNodeId);
+                    if (existingNode && existingNode.level === 0) {
+                        // Already the main kraftverk at level 0, just highlight it
+                        if (graphNetwork) {
+                            graphNetwork.selectNodes([clickedNodeId]);
+
+                            if (focusNode) {
+                                const scrollX = window.scrollX;
+                                const scrollY = window.scrollY;
+
+                                graphNetwork.focus(clickedNodeId, {
+                                    scale: 1.0,
+                                    animation: {
+                                        duration: 500,
+                                        easingFunction: 'easeInOutQuad'
+                                    }
+                                });
+
+                                setTimeout(() => {
+                                    window.scrollTo(scrollX, scrollY);
+                                }, 0);
+                            } else {
+                                const nodePosition = graphNetwork.getPositions([clickedNodeId])[clickedNodeId];
+                                const viewPosition = graphNetwork.getViewPosition();
+
+                                if (nodePosition) {
+                                    graphNetwork.moveTo({
+                                        position: { x: nodePosition.x, y: viewPosition.y },
+                                        scale: graphNetwork.getScale(),
+                                        animation: {
+                                            duration: 500,
+                                            easingFunction: 'easeInOutQuad'
+                                        }
+                                    });
+                                }
+                            }
                         }
-                    });
-
-                    // Restore scroll position if it changed
-                    setTimeout(() => {
-                        window.scrollTo(scrollX, scrollY);
-                    }, 0);
+                        return;
+                    } else {
+                        // Kraftverk exists but not at level 0, need to rebuild
+                        shouldClearGraph = true;
+                    }
                 } else {
-                    // Only move horizontally (from graph click)
-                    const nodePosition = graphNetwork.getPositions([clickedNodeId])[clickedNodeId];
-                    const viewPosition = graphNetwork.getViewPosition();
+                    // Kraftverk doesn't exist in graph, need to build it
+                    shouldClearGraph = true;
+                }
 
-                    if (nodePosition) {
-                        graphNetwork.moveTo({
-                            position: { x: nodePosition.x, y: viewPosition.y },
-                            scale: graphNetwork.getScale(),
+                if (shouldClearGraph) {
+                    graphNodes.clear();
+                    graphEdges.clear();
+                    currentGraphKraftverk = itemKraftverkId;
+                }
+            } else if (centerItem.vannkraftverkNr || centerItem.vannkraftverkNavn) {
+                itemKraftverkId = centerItem.vannkraftverkNr || centerItem.vannkraftverkNavn;
+
+                // For non-kraftverk: check if we should just highlight or rebuild
+                if (nodeExistsInGraph && graphNetwork) {
+                    // Just highlight the existing node
+                    graphNetwork.selectNodes([clickedNodeId]);
+
+                    if (focusNode) {
+                        const scrollX = window.scrollX;
+                        const scrollY = window.scrollY;
+
+                        graphNetwork.focus(clickedNodeId, {
+                            scale: 1.0,
                             animation: {
                                 duration: 500,
                                 easingFunction: 'easeInOutQuad'
                             }
                         });
+
+                        setTimeout(() => {
+                            window.scrollTo(scrollX, scrollY);
+                        }, 0);
+                    } else {
+                        const nodePosition = graphNetwork.getPositions([clickedNodeId])[clickedNodeId];
+                        const viewPosition = graphNetwork.getViewPosition();
+
+                        if (nodePosition) {
+                            graphNetwork.moveTo({
+                                position: { x: nodePosition.x, y: viewPosition.y },
+                                scale: graphNetwork.getScale(),
+                                animation: {
+                                    duration: 500,
+                                    easingFunction: 'easeInOutQuad'
+                                }
+                            });
+                        }
                     }
+                    return;
                 }
-                return;
-            }
 
-            // Determine which kraftverk this item belongs to
-            let itemKraftverkId = null;
-            if (centerItem._type === 'vannkraftverk') {
-                itemKraftverkId = centerItem.vannkraftverkNr || centerItem.vannkraftverkNavn || centerItem.OBJECTID;
-            } else if (centerItem.vannkraftverkNr || centerItem.vannkraftverkNavn) {
-                itemKraftverkId = centerItem.vannkraftverkNr || centerItem.vannkraftverkNavn;
-            }
-
-            // Only clear graph if switching to a different kraftverk
-            if (itemKraftverkId && itemKraftverkId !== currentGraphKraftverk) {
-                graphNodes.clear();
-                graphEdges.clear();
-                currentGraphKraftverk = itemKraftverkId;
-            } else if (!itemKraftverkId && centerItem._type !== 'vannkraftverk') {
+                // Clear graph if switching to a different kraftverk
+                if (itemKraftverkId !== currentGraphKraftverk) {
+                    graphNodes.clear();
+                    graphEdges.clear();
+                    currentGraphKraftverk = itemKraftverkId;
+                }
+            } else {
                 // If this is not a kraftverk and has no kraftverk relation, clear graph
                 graphNodes.clear();
                 graphEdges.clear();
