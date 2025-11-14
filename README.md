@@ -1,180 +1,185 @@
-# Vannkraftverk Visualizer
+# Vannkraftsystemer Visualizer - NVE
 
-En interaktiv webapplikasjon for å utforske og visualisere alle vannkraftverk i Norge basert på data fra NVE (Norges vassdrags- og energidirektorat).
+Interaktiv webapplikasjon for visualisering av norske vannkraftsystemer fra NVE (Norges vassdrags- og energidirektorat).
 
-## Funksjoner
+## 🎯 Funksjoner
 
-### Søk og filtrering
-- **Tekstsøk**: Søk etter vannkraftverk etter navn
-- **Geografisk filtrering**: Filtrer på fylke og kommune
-- **Ytelsesfilter**: Filtrer på minimum og maksimum ytelse (MW)
-- **Tidsfilter**: Filtrer på idriftsettelsesår
+- **Søk og filter** - Søk etter kraftverk, dammer, magasiner med avanserte filtre
+- **Interaktiv graf** - Visualiser hierarkiske relasjoner mellom komponenter
+- **Detaljert informasjon** - Se alle tekniske detaljer for hvert objekt
+- **Relaterte objekter** - Utforsk forbindelser mellom vannkraftsystemer
+- **Azure AD autentisering** - Sikker tilgang kun for NVE-ansatte
 
-### Visualisering
-- **Oversiktsliste**: Se alle vannkraftverk som matcher søkekriteriene
-- **Fargekodet ytelse**:
-  - 🟢 Grønn: Store kraftverk (>100 MW)
-  - 🟠 Oransje: Mellomstore kraftverk (20-100 MW)
-  - 🔵 Blå: Små kraftverk (<20 MW)
-- **Detaljvisning**: Klikk på et anlegg for å se fullstendige detaljer
-- **Google Maps-integrasjon**: Åpne hvert anlegg direkte i Google Maps
-
-### Data
-- **Sanntidsdata**: Henter data direkte fra NVEs offentlige API
-- **Omfattende informasjon**:
-  - Anleggsnummer og navn
-  - Lokasjon (kommune, fylke, koordinater)
-  - Tekniske data (ytelse, fallhøyde, produksjon)
-  - Status og konsesjonsinformasjon
-  - Idriftsettelsesår
-
-## Bruk lokalt
-
-### Enkel bruk
-Åpne bare `index.html` i en moderne nettleser. Applikasjonen vil automatisk laste data fra NVE.
-
-### Kjør med lokal webserver (valgfritt)
-```bash
-# Python 3
-python3 -m http.server 8000
-
-# Node.js (med npx)
-npx serve
-
-# Åpne deretter http://localhost:8000 i nettleseren
-```
-
-## Deploy til Azure
-
-### Azure Static Web Apps
-
-1. **Opprett en Static Web App i Azure Portal**
-   ```bash
-   az staticwebapp create \
-     --name vannkraftverk-visualizer \
-     --resource-group <din-resource-group> \
-     --source . \
-     --location "West Europe" \
-     --branch main
-   ```
-
-2. **Push til GitHub**
-   ```bash
-   git init
-   git add index.html README.md
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin <din-github-repo>
-   git push -u origin main
-   ```
-
-3. **Koble GitHub til Azure**
-   - Gå til Azure Portal → Static Web Apps
-   - Koble til GitHub repository
-   - Velg branch og mappestruktur
-   - Azure vil automatisk deploye
-
-### Azure App Service (alternativ)
-
-1. **Opprett en App Service**
-   ```bash
-   az webapp up --name vannkraftverk-visualizer \
-     --resource-group <din-resource-group> \
-     --runtime "NODE:18-lts" \
-     --sku FREE
-   ```
-
-2. **Deploy filen**
-   - Bruk Azure Portal → App Service → Deployment Center
-   - Last opp `index.html`
-
-### Azure Blob Storage + Static Website (billigst)
-
-1. **Aktiver static website hosting**
-   ```bash
-   az storage blob service-properties update \
-     --account-name <storage-account> \
-     --static-website \
-     --index-document index.html
-   ```
-
-2. **Last opp filen**
-   ```bash
-   az storage blob upload \
-     --account-name <storage-account> \
-     --container-name '$web' \
-     --name index.html \
-     --file index.html
-   ```
-
-## Teknisk informasjon
-
-### API
-Applikasjonen bruker NVEs offentlige ArcGIS REST API:
-- **Service**: https://nve.geodataonline.no/arcgis/rest/services/Vannkraft1/MapServer
-- **Layer**: 0 (Vannkraftverk)
-- **Format**: JSON med geometri (WGS84, EPSG:4326)
-
-### Datafelt
-- `vannkraftverkNr`: Unikt anleggsnummer
-- `vannkraftverkNavn`: Navn på kraftverket
-- `kommunenummer`: Kommunenummer
-- `kommuneNavn`: Kommunenavn
-- `fylke`: Fylke
-- `konsesjonStatus`: Status for konsesjon
-- `status`: Driftsstatus (D = I drift)
-- `idriftsattAar`: År kraftverket ble satt i drift
-- `maksYtelse_MW`: Maksimal ytelse i megawatt
-- `midlereProduksjon_GWh`: Gjennomsnittlig årlig produksjon i gigawattimer
-- `bruttoFallhoyde_m`: Brutto fallhøyde i meter
-- `lat`: Breddegrad (latitude)
-- `lon`: Lengdegrad (longitude)
-
-### Teknologier
-- **Frontend**: Vanilla JavaScript (ingen dependencies)
-- **Styling**: CSS3 med moderne features
-- **API-kommunikasjon**: Fetch API
-- **Kartintegrasjon**: Google Maps URL-skjema
-
-## Prosjektstruktur
+## 📁 Prosjektstruktur
 
 ```
 NVE_Anleggsregister/
-├── index.html                      # Hovedapplikasjon
-├── README.md                       # Denne filen
-├── generate_visualizer.py          # Python-script for offline versjon (valgfri)
-└── vannkraftverk-visualizer.html   # Offline versjon med innebygd data (valgfri)
+├── index_vann.html              # Hovedapplikasjon (single-file)
+├── vannkraft-data.json          # Kombinert datafil for deployment
+├── staticwebapp.config.json     # Azure konfigurasjon (inkl. Azure AD)
+│
+├── convert_to_json.py           # Script for å generere vannkraft-data.json
+│
+├── CLAUDE.md                    # Teknisk dokumentasjon
+├── DEPLOYMENT.md                # Deployment guide
+├── AZURE_AD_SETUP.md            # Azure AD setup guide (steg-for-steg)
+└── README.md                    # Denne filen
 ```
 
-## Nettleserkompatibilitet
+## 🚀 Kom i gang
 
-Applikasjonen fungerer i alle moderne nettlesere:
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-- Opera 76+
+### Lokal utvikling
 
-## Datakilde og lisens
+1. **Generer datafil:**
+   ```bash
+   python3 convert_to_json.py
+   ```
 
-Data er hentet fra NVEs offentlige API og er underlagt [Norsk lisens for offentlige data (NLOD)](https://data.norge.no/nlod/no).
+2. **Start lokal webserver:**
+   ```bash
+   python3 -m http.server 8000
+   ```
 
-### NVE Attribution
-Data levert av [Norges vassdrags- og energidirektorat (NVE)](https://www.nve.no/)
+3. **Åpne i nettleser:**
+   ```
+   http://localhost:8000/index_vann.html
+   ```
 
-## Ytterligere ressurser
+### Deployment til Azure
 
-- [NVE Hjemmeside](https://www.nve.no/)
-- [NVE ArcGIS Services](https://nve.geodataonline.no/arcgis/rest/services)
-- [NVE Kraftverk Database](https://www.nve.no/energi/energisystem/kraftproduksjon/vannkraft/)
+**Se detaljerte instruksjoner:**
+- 📘 [`DEPLOYMENT.md`](./DEPLOYMENT.md) - Generell deployment guide
+- 🔐 [`AZURE_AD_SETUP.md`](./AZURE_AD_SETUP.md) - Azure AD autentisering setup
 
-## Utviklet med
+**Rask oversikt:**
+1. Opprett Azure Static Web App
+2. Konfigurer Azure AD autentisering
+3. Deploy `index_vann.html`, `vannkraft-data.json`, og `staticwebapp.config.json`
 
-Dette prosjektet er utviklet med hjelp fra Claude Code.
+## 🔐 Sikkerhet
 
-## Kontakt
+Applikasjonen er sikret med **Azure Active Directory (Entra ID) autentisering**:
 
-For spørsmål eller problemer, vennligst opprett et issue i prosjektets repository.
+- ✅ Kun NVE-ansatte med Azure AD-konto får tilgang
+- ✅ Single Sign-On (SSO)
+- ✅ Gratis på Azure Static Web Apps Free tier
+- ✅ Fungerer fra kontor, hjemmekontor, mobil
+
+## 📊 Data
+
+**Kilde:** NVE (Norges vassdrags- og energidirektorat)
+
+**Datatyper:**
+- **Vannkraftverk** - 1,871 anlegg
+- **Dammer** - 5,005 anlegg
+- **Magasiner** - 2,511 anlegg
+- **Vannveier** - 4,441 anlegg
+- **Inntakspunkt** - 3,416 anlegg
+- **Utløpspunkt** - 1,615 anlegg
+
+**Oppdatering:**
+Kjør nedlastingsskriptene i `../NVE_DATA/` for å hente ferske data fra NVE.
+
+## 🛠️ Teknologi
+
+- **Frontend:** Vanilla JavaScript (ingen dependencies)
+- **Graf:** vis.js Network
+- **Hosting:** Azure Static Web Apps
+- **Autentisering:** Azure Active Directory
+- **Data:** JSON (gzip komprimert ved serving)
+
+## 📖 Dokumentasjon
+
+### For utviklere
+- [`CLAUDE.md`](./CLAUDE.md) - Komplett teknisk dokumentasjon
+  - Arkitektur og layout
+  - Graf hierarki og logikk
+  - Funksjoner og dataflyt
+  - Dam-Magasin relasjoner
+
+### For deployment
+- [`DEPLOYMENT.md`](./DEPLOYMENT.md) - Deployment alternativer og konfigurasjon
+- [`AZURE_AD_SETUP.md`](./AZURE_AD_SETUP.md) - Steg-for-steg Azure AD setup
+
+## 🎨 Funksjoner i detalj
+
+### Hierarkisk graf
+```
+Level 0: Kraftverk (topp)
+         ↓
+Level 1: Dam, Vannvei, Inntakspunkt, Utløpspunkt
+         ↓ (fra Dam)
+Level 2: Magasin (når de tilhører en Dam)
+```
+
+### Søk og filtrering
+- Søk etter navn
+- Filter på type (kraftverk, dam, magasin, osv.)
+- Filter på kommune
+- Filter på vassdragsnummer
+
+### Interaksjon
+- Klikk på resultat → Vis i graf og detaljer
+- Klikk på node i graf → Vis detaljer
+- Klikk på relatert objekt → Naviger til det objektet
+
+## 💰 Kostnader
+
+**Azure Static Web Apps Free tier:**
+- ✅ 100 GB bandwidth/måned (mer enn nok)
+- ✅ 0.5 GB storage (vannkraft-data.json = 7.5 MB)
+- ✅ Azure AD autentisering inkludert
+- ✅ Automatisk SSL og CDN
+
+**Total kostnad:** 0 kr/måned 🎉
+
+## 🔄 Oppdatering av data
+
+Når NVE-dataene oppdateres:
+
+```bash
+# 1. Hent nye data
+cd ../NVE_DATA
+python3 lastned_nve_vannkraftverk.py
+python3 lastned_nve_dammer.py
+# ... (kjør alle nedlastingsskriptene)
+
+# 2. Generer ny JSON
+cd ../NVE_Anleggsregister
+python3 convert_to_json.py
+
+# 3. Deploy
+az staticwebapp upload \
+  --name vannkraft-visualizer \
+  --resource-group NVE-Vannkraft-RG \
+  --source-path . \
+  --token <deployment-token>
+```
+
+## 🐛 Feilsøking
+
+### Graf viser ikke alle objekter
+- Sjekk at `findDirectRelations()` returnerer riktig data
+- Åpne DevTools Console og sjekk for feil
+
+### Azure AD login fungerer ikke
+- Sjekk at Redirect URI er korrekt konfigurert
+- Verifiser at `<TENANT_ID>` er riktig i `staticwebapp.config.json`
+- Se [`AZURE_AD_SETUP.md`](./AZURE_AD_SETUP.md) for troubleshooting
+
+### Data laster ikke
+- Sjekk at `vannkraft-data.json` ligger i samme mappe som HTML
+- Sjekk nettverkstrafikk i DevTools → Network
+- Verifiser at CORS ikke blokkerer (bruk webserver, ikke `file://`)
+
+## 📝 Lisens
+
+Data fra NVE - se [NVE sine vilkår](https://www.nve.no).
+
+## 👥 Kontakt
+
+**NVE IT-support** for spørsmål om Azure AD eller deployment.
 
 ---
 
-**Sist oppdatert**: November 2025
+**Laget med ❤️ for NVE**

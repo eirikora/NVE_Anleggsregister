@@ -1,5 +1,23 @@
 # Deployment Guide - Vannkraftsystemer Visualizer
 
+## 🔐 Sikkerhet og Autentisering
+
+**VIKTIG:** Denne applikasjonen er konfigurert med **Azure AD autentisering**.
+
+✅ **Kun NVE-ansatte med Azure AD-konto får tilgang**
+✅ **Gratis** - Fungerer på Free tier
+✅ **Sikker** - Autentisering på serversiden
+
+**For komplett setup-guide, se:** [`AZURE_AD_SETUP.md`](./AZURE_AD_SETUP.md)
+
+**Rask oversikt:**
+1. Opprett Static Web App
+2. Opprett Azure AD App Registration
+3. Konfigurer Client ID og Secret
+4. Deploy applikasjonen
+
+---
+
 ## Deployment til Azure Static Web Apps
 
 ### Forberedelser
@@ -14,9 +32,12 @@
 2. **Filer som skal deployes:**
    ```
    NVE_Anleggsregister/
-   ├── index_vann.html       # Hovedapplikasjon
-   └── vannkraft-data.json   # Alle data (kombinert)
+   ├── index_vann.html              # Hovedapplikasjon
+   ├── vannkraft-data.json          # Alle data (kombinert)
+   └── staticwebapp.config.json     # Konfigurasjon (inkl. Azure AD)
    ```
+
+   ⚠️ **VIKTIG:** Husk å erstatte `<TENANT_ID>` i `staticwebapp.config.json` med din faktiske Tenant ID!
 
 ### Deploy til Azure Static Web Apps
 

@@ -1,0 +1,47 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index_vann.html"
+  },
+  "mimeTypes": {
+    ".json": "application/json"
+  },
+  "globalHeaders": {
+    "Cache-Control": "public, max-age=3600"
+  },
+  "auth": {
+    "identityProviders": {
+      "azureActiveDirectory": {
+        "registration": {
+          "openIdIssuer": "https://login.microsoftonline.com/<TENANT_ID>/v2.0",
+          "clientIdSettingName": "AZURE_CLIENT_ID",
+          "clientSecretSettingName": "AZURE_CLIENT_SECRET"
+        },
+        "login": {
+          "loginParameters": [
+            "response_type=code id_token",
+            "scope=openid profile email"
+          ]
+        }
+      }
+    }
+  },
+  "routes": [
+    {
+      "route": "/vannkraft-data.json",
+      "headers": {
+        "Cache-Control": "public, max-age=86400"
+      },
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/*",
+      "allowedRoles": ["authenticated"]
+    }
+  ],
+  "responseOverrides": {
+    "401": {
+      "redirect": "/.auth/login/aad",
+      "statusCode": 302
+    }
+  }
+}
