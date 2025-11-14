@@ -34,9 +34,16 @@ Interactive web application for visualizing Norwegian hydropower system data fro
 ### Hierarchy
 ```
 Level 0: Kraftverk (top)
-Level 1: Dam, Magasin, Vannvei (sorted by type)
-Level 2: Inntakspunkt, Utløpspunkt
+Level 1: Dam, Vannvei, Inntakspunkt, Utløpspunkt (sorted by type)
+         Magasin (if no parent dam)
+Level 2: Magasin (when connected to a Dam via magasinNr)
 ```
+
+**Dam-Magasin relationship:**
+- Dams reference their magasin via `magasinNr`
+- In the graph, magasiner that belong to a dam are shown at level 2 with an edge from dam → magasin
+- This includes magasiner that may not have the same kraftverkNr as the dam (cross-kraftverk references)
+- Magasiner without a dam (but belonging to the kraftverk) stay at level 1
 
 ### Focus Logic
 - **From result list:** Full focus (horizontal + vertical)

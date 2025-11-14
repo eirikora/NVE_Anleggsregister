@@ -1083,19 +1083,6 @@
                 return `${truncatedName}\n(${typeName})`;
             };
 
-            // Get hierarchical level for node type
-            const getNodeLevel = (type) => {
-                const levels = {
-                    'vannkraftverk': 0,  // Top level
-                    'dam': 1,
-                    'magasin': 1,
-                    'vannvei': 1,
-                    'inntakspunkt': 2,
-                    'utlopspunkt': 2
-                };
-                return levels[type] || 1;
-            };
-
             // Get sort order for type (to group by type on same level)
             const getTypeSortOrder = (type) => {
                 const order = {
@@ -1133,26 +1120,44 @@
             sortedRelated.forEach(rel => {
                 const relId = getNodeId(rel);
 
-                // All children of kraftverk should be at level 1
+                // Determine level: magasiner with parent dams go to level 2, others to level 1
+                const nodeLevel = (rel._type === 'magasin' && rel._parentDamIds && rel._parentDamIds.length > 0) ? 2 : 1;
+
                 graphNodes.add({
                     id: relId,
                     label: getLabel(rel),
                     color: getNodeColor(rel._type),
                     font: { color: 'white', size: 12 },
                     shape: 'box',
-                    level: 1,  // Always level 1 for children
+                    level: nodeLevel,
                     item: rel
                 });
 
-                // Add edge from center (kraftverk) to related
-                graphEdges.add({
-                    id: `${centerId}-${relId}`,
-                    from: centerId,
-                    to: relId,
-                    arrows: 'to',
-                    color: { color: '#999', highlight: '#666' },
-                    width: 2
-                });
+                // Add edges from parent(s)
+                if (rel._parentDamIds && rel._parentDamIds.length > 0) {
+                    // Magasin with parent dam(s): edge from each dam to magasin
+                    rel._parentDamIds.forEach(parentDamObjectId => {
+                        const parentDamId = `dam-${parentDamObjectId}`;
+                        graphEdges.add({
+                            id: `${parentDamId}-${relId}`,
+                            from: parentDamId,
+                            to: relId,
+                            arrows: 'to',
+                            color: { color: '#999', highlight: '#666' },
+                            width: 2
+                        });
+                    });
+                } else {
+                    // Direct child of kraftverk: edge from kraftverk to child
+                    graphEdges.add({
+                        id: `${centerId}-${relId}`,
+                        from: centerId,
+                        to: relId,
+                        arrows: 'to',
+                        color: { color: '#999', highlight: '#666' },
+                        width: 2
+                    });
+                }
             });
 
             // Destroy and recreate network to apply changes
@@ -1481,23 +1486,62 @@
             const vannkraftverkNr = item.vannkraftverkNr;
             const vannkraftverkNavn = item.vannkraftverkNavn;
 
-            // Only show children for kraftverk - this creates a clean single-level hierarchy
+            // Only show children for kraftverk - this creates a clean hierarchy
             if (item._type === 'vannkraftverk') {
                 // Find dams for this kraftverk
+                const dams = [];
                 allData.dammer.forEach(d => {
                     if ((d.vannkraftverkNr && d.vannkraftverkNr === vannkraftverkNr) ||
                         (d.vannkraftverkNavn && d.vannkraftverkNavn === vannkraftverkNavn)) {
-                        direct.push({ ...d, _type: 'dam' });
+                        dams.push({ ...d, _type: 'dam' });
                     }
                 });
 
-                // Find magasiner for this kraftverk
+                // Find magasiner - both via dam references and kraftverk membership
+                const magasiner = [];
+                const magasinerAdded = new Map(); // Track by OBJECTID, store parent dams
+
+                // First: Add magasiner that are referenced by dams (regardless of kraftverk)
+                dams.forEach(dam => {
+                    if (dam.magasinNr) {
+                        const magasin = allData.magasiner.find(m => m.magasinNr === dam.magasinNr);
+                        if (magasin) {
+                            if (!magasinerAdded.has(magasin.OBJECTID)) {
+                                // First dam for this magasin
+                                magasinerAdded.set(magasin.OBJECTID, [dam.OBJECTID]);
+                            } else {
+                                // Additional dam for this magasin
+                                magasinerAdded.get(magasin.OBJECTID).push(dam.OBJECTID);
+                            }
+                        }
+                    }
+                });
+
+                // Add magasiner with their parent dams
+                magasinerAdded.forEach((parentDamIds, magasinObjectId) => {
+                    const magasin = allData.magasiner.find(m => m.OBJECTID === magasinObjectId);
+                    if (magasin) {
+                        magasiner.push({ ...magasin, _type: 'magasin', _parentDamIds: parentDamIds });
+                    }
+                });
+
+                // Second: Add magasiner that belong to this kraftverk but don't have a parent dam
                 allData.magasiner.forEach(m => {
                     if ((m.vannkraftverkNr && m.vannkraftverkNr === vannkraftverkNr) ||
                         (m.vannkraftverkNavn && m.vannkraftverkNavn === vannkraftverkNavn)) {
-                        direct.push({ ...m, _type: 'magasin' });
+
+                        // Only add if not already added via parent dam
+                        if (!magasinerAdded.has(m.OBJECTID)) {
+                            magasiner.push({ ...m, _type: 'magasin' });
+                        }
                     }
                 });
+
+                // Add dams to direct list
+                direct.push(...dams);
+
+                // Add magasiner to direct list
+                direct.push(...magasiner);
 
                 // Find vannveier for this kraftverk
                 allData.vannveier.forEach(v => {
